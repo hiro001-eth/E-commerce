@@ -8,7 +8,7 @@ import ProductCard from "@/components/product-card";
 import type { Product } from "@/lib/types";
 
 export default function Home() {
-  const { data: products = [] } = useQuery({
+  const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
@@ -17,11 +17,15 @@ export default function Home() {
     retry: false,
   });
 
-  const { data: stats = { totalUsers: 0, activeStores: 0, productsListed: 0 } } = useQuery({
+  const { data: stats = { totalUsers: 0, activeStores: 0, productsListed: 0 } } = useQuery<{
+    totalUsers: number;
+    activeStores: number;
+    productsListed: number;
+  }>({
     queryKey: ["/api/stats"],
   });
 
-  const featuredProducts = products.slice(0, 4);
+  const featuredProducts = (products as Product[]).slice(0, 4);
 
   return (
     <main>
