@@ -1,0 +1,82 @@
+Hi AI,
+It's me, Manjil — working and exploring your potential to see how much you can do in this time.
+
+I will test you by asking whether you can create an E-Commerce Web app with full login/signup features and all typical e-commerce functionality.
+
+Project name: Dokan (web app).
+
+Users can create accounts, shop, and buy items using COD (cash on delivery).
+
+Vendors can list products and manage their own products.
+
+Description / Requirements
+
+No one can do anything without logging in / creating an account. Both users and vendors must be able to create accounts.
+
+In the /auth section there should be options to login/signup as vendor or user so each party goes to their respective dashboard.
+
+User features
+
+Login and signup (user). Users can change their password from account settings.
+
+Users can add products to a cart for future shopping.
+
+Users can manually purchase products by filling delivery details, view invoices, and track order status (e.g., still with vendor, out for delivery).
+
+Users can leave reviews and can chat with vendors.
+
+Users can filter products (e.g., by price) and apply coupon codes where the vendor allows coupons on that product.
+
+Add any missing user features necessary to make the user experience complete and functional.
+
+Vendor features
+
+Vendors can open a store and list products with pricing, discounts, and detailed product descriptions.
+
+Vendors can signup/login as vendors.
+
+Vendors can CRUD their products (create, hide, edit, delete) and show stock availability in real time.
+
+Admin features
+
+Admin can login with a default username/password to access the admin dashboard.
+
+Admin dashboard shows all stores and how many products are listed across Dokan; all relevant data should be visible.
+
+Admin should have all powers over users and vendors.
+
+Admin can perform any action in the webapp.
+
+Overall features
+
+Secure data transfer (TLS/HTTPS where applicable).
+
+All data stored in a database supporting CRUD operations (create, read, update, delete).
+
+Technology stack (requested)
+
+Frontend
+
+HTML
+
+CSS with Tailwind
+
+JavaScript with AJAX/JSON, React (you also mentioned Node.js for front tooling)
+
+Backend
+
+Python with Flask (and required libraries to ensure reliable operation)
+
+Database
+
+Prefer lightweight, high-performance options for development, but production-ready choices like MySQL, PostgreSQL, or MariaDB are fine. Ensure database security.
+
+Pages / Theme
+
+Pages: Home, About, Contact, Shop, Policy, Privacy & Cookie Policy, Account Dashboard.
+
+Design/theme: simple and attractive with white and sky-blue light colors, smooth hover effects and transitions.
+
+Create a Dokan logo and show it during loading/refresh with a pleasant animation.
+
+Make it good.
