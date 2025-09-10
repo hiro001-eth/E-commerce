@@ -72,140 +72,103 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Role-Based Access Section */}
+      {/* Customer Reviews Section */}
       <section className="py-16 bg-muted/30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">Three Powerful Dashboards</h2>
-            <p className="text-muted-foreground text-lg">Choose your role and access tailored features designed for your needs</p>
+            <h2 className="text-3xl font-bold text-foreground mb-4">What Our Customers Say</h2>
+            <p className="text-muted-foreground text-lg">Real feedback from our satisfied customers and vendors</p>
           </div>
 
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* User Dashboard */}
+            {/* Customer Review 1 */}
             <Card className="hover:shadow-xl smooth-transition">
               <CardContent className="p-6">
-                <div className="text-center mb-6">
-                  <div className="bg-chart-1 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <User className="w-8 h-8 text-white" />
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-chart-1 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                    S
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">User Dashboard</h3>
-                  <p className="text-muted-foreground mt-2">Shop, track orders, and manage your account</p>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Sarah Johnson</h4>
+                    <p className="text-sm text-muted-foreground">Verified Customer</p>
+                  </div>
                 </div>
-                
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Browse and filter products
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Shopping cart & wishlist
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Order tracking & history
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Reviews & vendor chat
-                  </li>
-                </ul>
-                
-                <Button 
-                  asChild 
-                  className="w-full bg-chart-1 hover:bg-chart-1/90 text-white"
-                  data-testid="button-view-user-dashboard"
-                >
-                  <Link href={authData?.user?.role === "user" ? "/dashboard/user" : "/auth"}>
-                    View User Dashboard
-                  </Link>
-                </Button>
+                <div className="flex mb-3">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className="text-yellow-500">★</span>
+                  ))}
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  "Amazing platform! The variety of products is incredible and the ordering process is so smooth. I've been shopping here for months and never had any issues."
+                </p>
               </CardContent>
             </Card>
 
-            {/* Vendor Dashboard */}
+            {/* Vendor Review */}
             <Card className="hover:shadow-xl smooth-transition">
               <CardContent className="p-6">
-                <div className="text-center mb-6">
-                  <div className="bg-chart-2 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Store className="w-8 h-8 text-white" />
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-chart-2 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                    M
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">Vendor Dashboard</h3>
-                  <p className="text-muted-foreground mt-2">Manage your store and products</p>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Mike Chen</h4>
+                    <p className="text-sm text-muted-foreground">Store Owner</p>
+                  </div>
                 </div>
-                
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Product CRUD operations
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Inventory management
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Order fulfillment
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Sales analytics
-                  </li>
-                </ul>
-                
-                <Button 
-                  asChild 
-                  className="w-full bg-chart-2 hover:bg-chart-2/90 text-white"
-                  data-testid="button-view-vendor-dashboard"
-                >
-                  <Link href={authData?.user?.role === "vendor" ? "/dashboard/vendor" : "/auth"}>
-                    View Vendor Dashboard
-                  </Link>
-                </Button>
+                <div className="flex mb-3">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className="text-yellow-500">★</span>
+                  ))}
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  "As a vendor, Dokan has helped me reach customers I never could have reached before. The management tools are intuitive and the support is excellent."
+                </p>
               </CardContent>
             </Card>
 
-            {/* Admin Dashboard */}
+            {/* Customer Review 2 */}
             <Card className="hover:shadow-xl smooth-transition">
               <CardContent className="p-6">
-                <div className="text-center mb-6">
-                  <div className="bg-chart-3 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Settings className="w-8 h-8 text-white" />
+                <div className="flex items-center mb-4">
+                  <div className="w-12 h-12 bg-chart-3 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
+                    A
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">Admin Dashboard</h3>
-                  <p className="text-muted-foreground mt-2">Platform oversight and management</p>
+                  <div>
+                    <h4 className="font-semibold text-foreground">Anna Rodriguez</h4>
+                    <p className="text-sm text-muted-foreground">Regular Shopper</p>
+                  </div>
                 </div>
-                
-                <ul className="space-y-3 mb-6">
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    User & vendor management
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Platform analytics
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    System configuration
-                  </li>
-                  <li className="flex items-center text-sm">
-                    <Badge variant="secondary" className="mr-3">✓</Badge>
-                    Content moderation
-                  </li>
-                </ul>
-                
-                <Button 
-                  asChild 
-                  className="w-full bg-chart-3 hover:bg-chart-3/90 text-white"
-                  data-testid="button-view-admin-dashboard"
-                >
-                  <Link href={authData?.user?.role === "admin" ? "/dashboard/admin" : "/auth"}>
-                    View Admin Dashboard
-                  </Link>
-                </Button>
+                <div className="flex mb-3">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className="text-yellow-500">★</span>
+                  ))}
+                </div>
+                <p className="text-muted-foreground text-sm">
+                  "Love the quality of products and fast shipping! The customer service team is always helpful and responsive. Highly recommend this marketplace."
+                </p>
               </CardContent>
             </Card>
+          </div>
+
+          <div className="text-center mt-12">
+            <div className="bg-card rounded-lg p-8 shadow-lg">
+              <h3 className="text-2xl font-bold text-foreground mb-4">Join Thousands of Satisfied Users</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">4.8/5</div>
+                  <p className="text-sm text-muted-foreground">Average Rating</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">25,000+</div>
+                  <p className="text-sm text-muted-foreground">Happy Customers</p>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-primary">99.2%</div>
+                  <p className="text-sm text-muted-foreground">Satisfaction Rate</p>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
