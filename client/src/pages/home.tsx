@@ -207,7 +207,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-card border-t border-border py-12">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center mb-4">
                 <Store className="text-2xl text-primary mr-3" />
@@ -223,18 +223,28 @@ export default function Home() {
               <ul className="space-y-2 text-sm">
                 <li><Link href="/" className="text-muted-foreground hover:text-primary smooth-transition">Home</Link></li>
                 <li><Link href="/shop" className="text-muted-foreground hover:text-primary smooth-transition">Shop</Link></li>
-                <li><Link href="/about" className="text-muted-foreground hover:text-primary smooth-transition">About</Link></li>
-                <li><Link href="/contact" className="text-muted-foreground hover:text-primary smooth-transition">Contact</Link></li>
+                <li><a href="https://docs.dokan.com/vendor-guide" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Vendor Application Guide</a></li>
+                <li><a href="https://help.dokan.com/faq" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">User Manual & FAQ</a></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-semibold text-foreground mb-4">Support</h3>
+              <h3 className="font-semibold text-foreground mb-4">Resources</h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="#" className="text-muted-foreground hover:text-primary smooth-transition">Privacy Policy</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary smooth-transition">Terms of Service</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary smooth-transition">Cookie Policy</a></li>
-                <li><a href="#" className="text-muted-foreground hover:text-primary smooth-transition">Help Center</a></li>
+                <li><a href="https://developers.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Technical Documentation</a></li>
+                <li><a href="https://community.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Community Forum</a></li>
+                <li><a href="https://blog.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Blog & Updates</a></li>
+                <li><a href="https://status.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Service Status</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h3 className="font-semibold text-foreground mb-4">Legal & Policies</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="https://dokan.com/privacy" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Privacy Policy</a></li>
+                <li><a href="https://dokan.com/terms" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Terms of Service</a></li>
+                <li><a href="https://dokan.com/return-policy" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Return & Refund Policy</a></li>
+                <li><a href="https://dokan.com/shipping" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Shipping Policy</a></li>
               </ul>
             </div>
             
