@@ -73,7 +73,7 @@ export default function VendorDashboard() {
   const user = authData?.user as UserType;
 
   const [imageUrls, setImageUrls] = useState<string[]>([]);
-  const [imageInput, setImageInput] = useState("");
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const productForm = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
@@ -156,16 +156,67 @@ export default function VendorDashboard() {
     pendingOrders: orders.filter((order: Order) => order.status === "pending").length,
   };
 
-  const addImage = () => {
-    if (imageInput.trim() && !imageUrls.includes(imageInput.trim())) {
-      const newImages = [...imageUrls, imageInput.trim()];
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setUploadingImages(true);
+    const newImages = [...imageUrls];
+
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch('/api/upload/product-image', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          newImages.push(data.imagePath);
+        } else {
+          const errorData = await response.json();
+          toast({
+            title: "Upload failed",
+            description: errorData.message || "Failed to upload image",
+            variant: "destructive"
+          });
+        }
+      }
+
       setImageUrls(newImages);
       productForm.setValue("images", newImages);
-      setImageInput("");
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "An error occurred while uploading images",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImages(false);
     }
   };
 
-  const removeImage = (index: number) => {
+  const removeImage = async (index: number) => {
+    const imagePath = imageUrls[index];
+    
+    try {
+      // Delete from server if it's an uploaded image
+      if (imagePath.startsWith('/uploads/')) {
+        await fetch('/api/upload/product-image', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagePath }),
+          credentials: 'include',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete image from server:', error);
+    }
+
     const newImages = imageUrls.filter((_, i) => i !== index);
     setImageUrls(newImages);
     productForm.setValue("images", newImages);
@@ -648,22 +699,39 @@ export default function VendorDashboard() {
                     {/* Image Management */}
                     <div className="space-y-4">
                       <Label>Product Images</Label>
-                      <div className="flex gap-2">
-                        <Input
-                          placeholder="Enter image URL"
-                          value={imageInput}
-                          onChange={(e) => setImageInput(e.target.value)}
-                          data-testid="input-image-url"
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => handleImageUpload(e.target.files)}
+                          className="hidden"
+                          id="image-upload"
+                          disabled={uploadingImages}
+                          data-testid="input-image-upload"
                         />
-                        <Button
-                          type="button"
-                          onClick={addImage}
-                          size="sm"
-                          data-testid="button-add-image"
+                        <label 
+                          htmlFor="image-upload" 
+                          className="cursor-pointer flex flex-col items-center gap-2"
                         >
-                          <Upload className="w-4 h-4 mr-2" />
-                          Add
-                        </Button>
+                          <Upload className="w-8 h-8 text-gray-400" />
+                          <div className="text-sm text-gray-600">
+                            {uploadingImages ? (
+                              <span>Uploading images...</span>
+                            ) : (
+                              <span>
+                                <strong>Click to upload</strong> or drag and drop
+                                <br />
+                                PNG, JPG, GIF up to 5MB each
+                              </span>
+                            )}
+                          </div>
+                        </label>
+                        {uploadingImages && (
+                          <div className="mt-2">
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
+                          </div>
+                        )}
                       </div>
                       {imageUrls.length > 0 && (
                         <div className="grid grid-cols-2 gap-4">

@@ -1,7 +1,10 @@
-import type { Express, Request, Response, NextFunction } from "express";
+import express, { type Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import MemoryStore from "memorystore";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
 import { 
   loginSchema, 
@@ -35,6 +38,43 @@ import { z } from "zod";
 import { PasswordCrypto, DataCrypto, SessionCrypto, InputSecurity, SecurityAudit } from "./crypto";
 
 const MemStore = MemoryStore(session);
+
+// Multer configuration for file uploads
+const storage_multer = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadPath = path.join(process.cwd(), 'uploads', 'products');
+    // Ensure directory exists
+    if (!fs.existsSync(uploadPath)) {
+      fs.mkdirSync(uploadPath, { recursive: true });
+    }
+    cb(null, uploadPath);
+  },
+  filename: (req, file, cb) => {
+    // Generate unique filename
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const extension = path.extname(file.originalname);
+    cb(null, `product-${uniqueSuffix}${extension}`);
+  }
+});
+
+const upload = multer({
+  storage: storage_multer,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter: (req, file, cb) => {
+    // Check file type
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Only image files (JPEG, JPG, PNG, GIF, WEBP) are allowed'));
+    }
+  }
+});
 
 // Entity to DTO mapping functions
 function mapUserToDTO(user: User): UserDTO {
@@ -175,6 +215,9 @@ declare module "express-session" {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve static files from uploads directory
+  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
+
   // Session middleware
   app.use(
     session({
@@ -352,6 +395,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } else {
       res.status(401).json({ message: "Not authenticated" });
+    }
+  });
+
+  // Default admin login route
+  app.post("/api/auth/admin-login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      // Check for default admin credentials
+      if (username === "admin" && password === "admin123") {
+        // Check if admin user exists, create if not
+        let adminUser = await storage.getUserByEmail("admin@dokan.com");
+        
+        if (!adminUser) {
+          // Create default admin user
+          const hashedPassword = await PasswordCrypto.hashPassword("admin123");
+          adminUser = await storage.createUser({
+            username: "admin",
+            email: "admin@dokan.com",
+            password: hashedPassword,
+            role: "admin",
+            firstName: "System",
+            lastName: "Administrator",
+            isActive: true,
+          });
+        }
+
+        // Set session
+        req.session.user = SessionCrypto.sanitizeUserForSession(adminUser);
+        
+        // Log security event
+        SecurityAudit.logSecurityEvent({
+          type: 'login',
+          userId: adminUser.id,
+          ip: req.ip,
+          userAgent: req.get('User-Agent')
+        });
+
+        res.json({ user: mapUserToDTO(adminUser) });
+      } else {
+        res.status(401).json({ message: "Invalid admin credentials" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
     }
   });
 
@@ -655,10 +742,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Product not found" });
       }
 
+      // Delete associated image files if they exist
+      if (product.images && product.images.length > 0) {
+        product.images.forEach(imagePath => {
+          if (imagePath.startsWith('/uploads/')) {
+            const fullPath = path.join(process.cwd(), imagePath);
+            if (fs.existsSync(fullPath)) {
+              fs.unlinkSync(fullPath);
+            }
+          }
+        });
+      }
+
       await storage.deleteProduct(req.params.id);
       res.json({ message: "Product deleted successfully" });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // File upload route for product images
+  app.post("/api/upload/product-image", requireAuth, requireRole(["vendor"]), upload.single('image'), (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+
+      // Return the image path relative to the public directory
+      const imagePath = `/uploads/products/${req.file.filename}`;
+      
+      res.json({ 
+        message: "Image uploaded successfully",
+        imagePath,
+        originalName: req.file.originalname,
+        size: req.file.size
+      });
+    } catch (error) {
+      res.status(500).json({ message: "File upload failed" });
+    }
+  });
+
+  // Delete uploaded image route
+  app.delete("/api/upload/product-image", requireAuth, requireRole(["vendor"]), async (req, res) => {
+    try {
+      const { imagePath } = req.body;
+      
+      if (!imagePath || !imagePath.startsWith('/uploads/')) {
+        return res.status(400).json({ message: "Invalid image path" });
+      }
+
+      const fullPath = path.join(process.cwd(), imagePath);
+      if (fs.existsSync(fullPath)) {
+        fs.unlinkSync(fullPath);
+        res.json({ message: "Image deleted successfully" });
+      } else {
+        res.status(404).json({ message: "Image not found" });
+      }
+    } catch (error) {
+      res.status(500).json({ message: "Failed to delete image" });
     }
   });
 
