@@ -247,6 +247,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current vendor information
+  app.get("/api/vendors/me", requireAuth, async (req, res) => {
+    try {
+      const vendor = await storage.getVendorByUserId(req.session.user!.id);
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+      res.json(vendor);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Product routes
   app.get("/api/products", async (req, res) => {
     try {
