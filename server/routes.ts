@@ -793,6 +793,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/orders/:id/items", requireAuth, async (req, res) => {
+    try {
+      const { id: orderId } = req.params;
+      const userId = req.session.user!.id;
+      
+      // First verify the order belongs to the user or user is admin/vendor
+      const order = await storage.getOrder(orderId);
+      if (!order) {
+        return res.status(404).json({ message: "Order not found" });
+      }
+      
+      // Check authorization
+      if (req.session.user!.role !== "admin") {
+        if (req.session.user!.role === "vendor") {
+          const vendor = await storage.getVendorByUserId(userId);
+          if (!vendor || order.vendorId !== vendor.id) {
+            return res.status(403).json({ message: "Access denied" });
+          }
+        } else if (order.userId !== userId) {
+          return res.status(403).json({ message: "Access denied" });
+        }
+      }
+      
+      // Get order items with product details
+      const orderItems = await storage.getOrderItemsByOrder(orderId);
+      const orderItemDTOs = [];
+      
+      for (const item of orderItems) {
+        const product = await storage.getProduct(item.productId);
+        const orderItemDTO = {
+          id: item.id,
+          orderId: item.orderId,
+          productId: item.productId,
+          quantity: item.quantity,
+          price: item.price,
+          total: item.total,
+          product: product ? mapProductToDTO(product) : undefined,
+        };
+        orderItemDTOs.push(orderItemDTO);
+      }
+      
+      res.json(orderItemDTOs);
+    } catch (error) {
+      console.error("Error fetching order items:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Categories
   app.get("/api/categories", async (req, res) => {
     try {

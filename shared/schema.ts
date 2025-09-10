@@ -378,6 +378,7 @@ export interface OrderItemDTO {
   quantity: number;
   price: string;
   total: string;
+  product?: ProductDTO;
 }
 
 export interface ReviewDTO {

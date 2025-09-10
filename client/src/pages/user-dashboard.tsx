@@ -5,11 +5,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { User, ShoppingBag, Heart, Settings, DollarSign } from "lucide-react";
+import { User, ShoppingBag, Heart, Settings, DollarSign, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { UserDTO as UserType, OrderDTO as Order } from "@shared/schema";
+import ReviewForm from "@/components/review-form";
+import type { UserDTO as UserType, OrderDTO as Order, ProductDTO, OrderItemDTO } from "@shared/schema";
 
 export default function UserDashboard() {
   const [isEditing, setIsEditing] = useState(false);
@@ -18,6 +19,11 @@ export default function UserDashboard() {
     lastName: "",
     phone: "",
   });
+  const [expandedOrders, setExpandedOrders] = useState<Set<string>>(new Set());
+  const [reviewingProduct, setReviewingProduct] = useState<{
+    orderId: string;
+    product: ProductDTO;
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -72,6 +78,40 @@ export default function UserDashboard() {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
+
+  const toggleOrderExpansion = (orderId: string) => {
+    setExpandedOrders(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(orderId)) {
+        newSet.delete(orderId);
+      } else {
+        newSet.add(orderId);
+      }
+      return newSet;
+    });
+  };
+
+  const { data: orderItems = {} } = useQuery<Record<string, OrderItemDTO[]>>({
+    queryKey: ["/api/order-items", Array.from(expandedOrders).sort()],
+    queryFn: async () => {
+      const expandedOrderIds = Array.from(expandedOrders);
+      if (expandedOrderIds.length === 0) return {};
+      
+      const results: Record<string, OrderItemDTO[]> = {};
+      for (const orderId of expandedOrderIds) {
+        try {
+          const response = await fetch(`/api/orders/${orderId}/items`, { credentials: "include" });
+          if (response.ok) {
+            results[orderId] = await response.json();
+          }
+        } catch (error) {
+          console.error(`Failed to fetch items for order ${orderId}:`, error);
+        }
+      }
+      return results;
+    },
+    enabled: expandedOrders.size > 0,
+  });
 
   const stats = {
     totalOrders: orders.length,
@@ -269,45 +309,98 @@ export default function UserDashboard() {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {orders.map((order: Order) => (
-                          <div
-                            key={order.id}
-                            className="flex items-center justify-between p-4 border border-border rounded-lg"
-                            data-testid={`order-item-${order.id}`}
-                          >
-                            <div className="flex-1">
-                              <div className="flex items-center gap-4">
-                                <div>
-                                  <p className="font-medium text-foreground" data-testid={`text-order-id-${order.id}`}>
-                                    Order #{order.id.slice(0, 8)}
-                                  </p>
-                                  <p className="text-sm text-muted-foreground" data-testid={`text-order-date-${order.id}`}>
-                                    {new Date(order.createdAt).toLocaleDateString()}
-                                  </p>
+                        {orders.map((order: Order) => {
+                          const isExpanded = expandedOrders.has(order.id);
+                          const items = orderItems[order.id] || [];
+                          
+                          return (
+                            <div
+                              key={order.id}
+                              className="border border-border rounded-lg"
+                              data-testid={`order-item-${order.id}`}
+                            >
+                              <div className="flex items-center justify-between p-4">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-4">
+                                    <div>
+                                      <p className="font-medium text-foreground" data-testid={`text-order-id-${order.id}`}>
+                                        Order #{order.id.slice(0, 8)}
+                                      </p>
+                                      <p className="text-sm text-muted-foreground" data-testid={`text-order-date-${order.id}`}>
+                                        {new Date(order.createdAt).toLocaleDateString()}
+                                      </p>
+                                    </div>
+                                    <Badge 
+                                      className={`${getStatusColor(order.status)} text-white`}
+                                      data-testid={`badge-status-${order.id}`}
+                                    >
+                                      {getStatusText(order.status)}
+                                    </Badge>
+                                  </div>
+                                  <div className="mt-2">
+                                    <p className="text-sm text-muted-foreground">
+                                      Delivery: {order.deliveryAddress.street}, {order.deliveryAddress.city}
+                                    </p>
+                                  </div>
                                 </div>
-                                <Badge 
-                                  className={`${getStatusColor(order.status)} text-white`}
-                                  data-testid={`badge-status-${order.id}`}
-                                >
-                                  {getStatusText(order.status)}
-                                </Badge>
+                                <div className="text-right flex items-center gap-3">
+                                  <div>
+                                    <p className="font-medium text-foreground" data-testid={`text-order-total-${order.id}`}>
+                                      ${parseFloat(order.total).toFixed(2)}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {order.paymentMethod.toUpperCase()}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleOrderExpansion(order.id)}
+                                    className="p-2"
+                                  >
+                                    {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </Button>
+                                </div>
                               </div>
-                              <div className="mt-2">
-                                <p className="text-sm text-muted-foreground">
-                                  Delivery: {order.deliveryAddress.street}, {order.deliveryAddress.city}
-                                </p>
-                              </div>
+                              
+                              {isExpanded && (
+                                <div className="border-t border-border p-4">
+                                  {items.length > 0 ? (
+                                    <div className="space-y-3">
+                                      <h4 className="font-medium text-foreground">Order Items</h4>
+                                      {items.map((item: OrderItemDTO) => (
+                                        <div key={item.id} className="flex items-center justify-between p-3 bg-muted rounded-lg">
+                                          <div className="flex-1">
+                                            <p className="font-medium text-foreground">{item.product?.name || 'Product Name'}</p>
+                                            <p className="text-sm text-muted-foreground">
+                                              Quantity: {item.quantity} × ${parseFloat(item.price).toFixed(2)}
+                                            </p>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <p className="font-medium">${parseFloat(item.total).toFixed(2)}</p>
+                                            {order.status === 'delivered' && item.product && (
+                                              <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() => setReviewingProduct({ orderId: order.id, product: item.product! })}
+                                                className="ml-2"
+                                              >
+                                                <Star className="w-4 h-4 mr-1" />
+                                                Write Review
+                                              </Button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <p className="text-muted-foreground text-center py-4">Loading order items...</p>
+                                  )}
+                                </div>
+                              )}
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium text-foreground" data-testid={`text-order-total-${order.id}`}>
-                                ${parseFloat(order.total).toFixed(2)}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {order.paymentMethod.toUpperCase()}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
@@ -465,6 +558,23 @@ export default function UserDashboard() {
           </div>
         </div>
       </div>
+
+      {/* Review Form Overlay */}
+      {reviewingProduct && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <ReviewForm
+            product={reviewingProduct.product}
+            orderId={reviewingProduct.orderId}
+            onClose={() => setReviewingProduct(null)}
+            onSuccess={() => {
+              toast({
+                title: "Review Submitted",
+                description: "Thank you for your feedback!",
+              });
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }
