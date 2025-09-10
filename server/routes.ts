@@ -127,6 +127,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Profile update route
+  app.put("/api/profile", requireAuth, async (req, res) => {
+    try {
+      const allowedFields = ['firstName', 'lastName', 'phone'];
+      const updates = Object.keys(req.body)
+        .filter(key => allowedFields.includes(key))
+        .reduce((obj: any, key) => {
+          obj[key] = req.body[key];
+          return obj;
+        }, {});
+
+      if (Object.keys(updates).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+
+      const updatedUser = await storage.updateUser(req.session.user!.id, updates);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Update session
+      req.session.user = updatedUser;
+
+      res.json({ user: { ...updatedUser, password: undefined } });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Vendor application
   app.post("/api/vendor/apply", requireAuth, async (req, res) => {
     try {

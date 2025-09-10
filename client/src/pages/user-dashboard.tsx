@@ -2,11 +2,25 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery } from "@tanstack/react-query";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User, ShoppingBag, Heart, Settings, DollarSign } from "lucide-react";
+import { useState, useEffect } from "react";
+import { apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import type { User as UserType, Order } from "@/lib/types";
 
 export default function UserDashboard() {
+  const [isEditing, setIsEditing] = useState(false);
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+  });
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
   const { data: authData } = useQuery({
     queryKey: ["/api/auth/me"],
   });
@@ -16,6 +30,48 @@ export default function UserDashboard() {
   });
 
   const user = authData?.user as UserType;
+
+  // Update form data when user data changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        firstName: user.firstName || "",
+        lastName: user.lastName || "",
+        phone: user.phone || "",
+      });
+    }
+  }, [user]);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: async (data: { firstName: string; lastName: string; phone: string }) => {
+      const response = await apiRequest("PUT", "/api/profile", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Profile updated",
+        description: "Your profile has been updated successfully.",
+      });
+      setIsEditing(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    updateProfileMutation.mutate(formData);
+  };
+
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
 
   const stats = {
     totalOrders: orders.length,
@@ -239,55 +295,127 @@ export default function UserDashboard() {
                   <CardHeader>
                     <CardTitle>Profile Information</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm font-medium text-foreground">First Name</label>
-                        <p className="text-muted-foreground" data-testid="text-profile-first-name">
-                          {user.firstName}
-                        </p>
-                      </div>
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Last Name</label>
-                        <p className="text-muted-foreground" data-testid="text-profile-last-name">
-                          {user.lastName}
-                        </p>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Email</label>
-                      <p className="text-muted-foreground" data-testid="text-profile-email">
-                        {user.email}
-                      </p>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Username</label>
-                      <p className="text-muted-foreground" data-testid="text-profile-username">
-                        {user.username}
-                      </p>
-                    </div>
-                    
-                    {user.phone && (
-                      <div>
-                        <label className="text-sm font-medium text-foreground">Phone</label>
-                        <p className="text-muted-foreground" data-testid="text-profile-phone">
-                          {user.phone}
-                        </p>
+                  <CardContent>
+                    {isEditing ? (
+                      <form onSubmit={handleFormSubmit} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <Label htmlFor="firstName">First Name</Label>
+                            <Input
+                              id="firstName"
+                              value={formData.firstName}
+                              onChange={(e) => handleInputChange('firstName', e.target.value)}
+                              data-testid="input-first-name"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="lastName">Last Name</Label>
+                            <Input
+                              id="lastName"
+                              value={formData.lastName}
+                              onChange={(e) => handleInputChange('lastName', e.target.value)}
+                              data-testid="input-last-name"
+                              required
+                            />
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="phone">Phone</Label>
+                          <Input
+                            id="phone"
+                            value={formData.phone}
+                            onChange={(e) => handleInputChange('phone', e.target.value)}
+                            data-testid="input-phone"
+                            placeholder="Your phone number"
+                          />
+                        </div>
+                        
+                        <div className="flex gap-2 pt-4">
+                          <Button 
+                            type="submit" 
+                            disabled={updateProfileMutation.isPending}
+                            data-testid="button-save-profile"
+                          >
+                            {updateProfileMutation.isPending ? "Saving..." : "Save Changes"}
+                          </Button>
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => {
+                              setIsEditing(false);
+                              if (user) {
+                                setFormData({
+                                  firstName: user.firstName || "",
+                                  lastName: user.lastName || "",
+                                  phone: user.phone || "",
+                                });
+                              }
+                            }}
+                            data-testid="button-cancel-edit"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sm font-medium text-foreground">First Name</label>
+                            <p className="text-muted-foreground" data-testid="text-profile-first-name">
+                              {user.firstName}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sm font-medium text-foreground">Last Name</label>
+                            <p className="text-muted-foreground" data-testid="text-profile-last-name">
+                              {user.lastName}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium text-foreground">Email</label>
+                          <p className="text-muted-foreground" data-testid="text-profile-email">
+                            {user.email}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium text-foreground">Username</label>
+                          <p className="text-muted-foreground" data-testid="text-profile-username">
+                            {user.username}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Username cannot be changed</p>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium text-foreground">Phone</label>
+                          <p className="text-muted-foreground" data-testid="text-profile-phone">
+                            {user.phone || "Not provided"}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <label className="text-sm font-medium text-foreground">Account Status</label>
+                          <Badge variant={user.isActive ? "default" : "destructive"} className="ml-2">
+                            {user.isActive ? "Active" : "Inactive"}
+                          </Badge>
+                        </div>
+                        
+                        <div className="pt-4">
+                          <Button 
+                            onClick={() => setIsEditing(true)}
+                            data-testid="button-edit-profile"
+                          >
+                            Edit Profile
+                          </Button>
+                        </div>
                       </div>
                     )}
-                    
-                    <div>
-                      <label className="text-sm font-medium text-foreground">Account Status</label>
-                      <Badge variant={user.isActive ? "default" : "destructive"} className="ml-2">
-                        {user.isActive ? "Active" : "Inactive"}
-                      </Badge>
-                    </div>
-                    
-                    <div className="pt-4">
-                      <Button data-testid="button-edit-profile">Edit Profile</Button>
-                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
