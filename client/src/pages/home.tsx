@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Users, Store, ShoppingBag, User, Settings } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import ProductCard from "@/components/product-card";
+import RecentReviews from "@/components/recent-reviews";
 import type { Product } from "@/lib/types";
 
 export default function Home() {
@@ -85,99 +86,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-foreground mb-4">What Our Customers Say</h2>
-            <p className="text-muted-foreground text-lg">Real feedback from our satisfied customers and vendors</p>
+            <p className="text-muted-foreground text-lg">Real feedback from verified customers</p>
           </div>
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Customer Review 1 */}
-            <Card className="hover:shadow-xl smooth-transition">
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 bg-chart-1 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
-                    S
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground">Sarah Johnson</h4>
-                    <p className="text-sm text-muted-foreground">Verified Customer</p>
-                  </div>
-                </div>
-                <div className="flex mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-500">★</span>
-                  ))}
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  "Amazing platform! The variety of products is incredible and the ordering process is so smooth. I've been shopping here for months and never had any issues."
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Vendor Review */}
-            <Card className="hover:shadow-xl smooth-transition">
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 bg-chart-2 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
-                    M
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground">Mike Chen</h4>
-                    <p className="text-sm text-muted-foreground">Store Owner</p>
-                  </div>
-                </div>
-                <div className="flex mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-500">★</span>
-                  ))}
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  "As a vendor, Dokan has helped me reach customers I never could have reached before. The management tools are intuitive and the support is excellent."
-                </p>
-              </CardContent>
-            </Card>
-
-            {/* Customer Review 2 */}
-            <Card className="hover:shadow-xl smooth-transition">
-              <CardContent className="p-6">
-                <div className="flex items-center mb-4">
-                  <div className="w-12 h-12 bg-chart-3 rounded-full flex items-center justify-center text-white font-bold text-lg mr-4">
-                    A
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground">Anna Rodriguez</h4>
-                    <p className="text-sm text-muted-foreground">Regular Shopper</p>
-                  </div>
-                </div>
-                <div className="flex mb-3">
-                  {[...Array(5)].map((_, i) => (
-                    <span key={i} className="text-yellow-500">★</span>
-                  ))}
-                </div>
-                <p className="text-muted-foreground text-sm">
-                  "Love the quality of products and fast shipping! The customer service team is always helpful and responsive. Highly recommend this marketplace."
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="text-center mt-12">
-            <div className="bg-card rounded-lg p-8 shadow-lg">
-              <h3 className="text-2xl font-bold text-foreground mb-4">Join Thousands of Satisfied Users</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary">4.8/5</div>
-                  <p className="text-sm text-muted-foreground">Average Rating</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary">25,000+</div>
-                  <p className="text-sm text-muted-foreground">Happy Customers</p>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary">99.2%</div>
-                  <p className="text-sm text-muted-foreground">Satisfaction Rate</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <RecentReviews />
         </div>
       </section>
 

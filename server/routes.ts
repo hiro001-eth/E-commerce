@@ -579,6 +579,123 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reviews endpoints
+  app.get("/api/reviews/recent", async (req, res) => {
+    try {
+      const allUsers = await storage.getAllUsers();
+      const allProducts = await storage.getAllProducts();
+      const allReviews: any[] = [];
+
+      // Get all reviews from all users
+      for (const user of allUsers) {
+        const userReviews = await storage.getReviewsByUser(user.id);
+        const reviewsWithDetails = userReviews.map(review => ({
+          ...review,
+          user: {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+          },
+          product: allProducts.find(p => p.id === review.productId) || { id: review.productId, name: 'Unknown Product' }
+        }));
+        allReviews.push(...reviewsWithDetails);
+      }
+
+      // Sort by creation date (newest first) and limit to recent reviews
+      const recentReviews = allReviews
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+        .slice(0, 20);
+
+      res.json(recentReviews);
+    } catch (error) {
+      console.error("Error fetching recent reviews:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/reviews/product/:productId", async (req, res) => {
+    try {
+      const { productId } = req.params;
+      const reviews = await storage.getReviewsByProduct(productId);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/reviews/user/:userId", async (req, res) => {
+    try {
+      const { userId } = req.params;
+      const reviews = await storage.getReviewsByUser(userId);
+      res.json(reviews);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/reviews", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.user!.id;
+      
+      // Use Zod schema for validation
+      const reviewData = insertReviewSchema.parse({
+        ...req.body,
+        userId
+      });
+
+      // Additional rating validation
+      if (reviewData.rating < 1 || reviewData.rating > 5) {
+        return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      }
+
+      // Check if user has already reviewed this product
+      const existingReviews = await storage.getReviewsByUser(userId);
+      const hasAlreadyReviewed = existingReviews.some(r => r.productId === reviewData.productId);
+      
+      if (hasAlreadyReviewed) {
+        return res.status(409).json({ 
+          message: "You have already reviewed this product" 
+        });
+      }
+
+      // CRITICAL FIX: Check if user has completed a delivered order containing this SPECIFIC product
+      const userOrders = await storage.getOrdersByUser(userId);
+      let hasVerifiedPurchase = false;
+
+      for (const order of userOrders) {
+        if (order.status === "delivered") {
+          // Get order items for this specific order
+          const orderItems = await storage.getOrderItemsByOrder(order.id);
+          const purchasedThisProduct = orderItems.some((item: any) => item.productId === reviewData.productId);
+          
+          if (purchasedThisProduct) {
+            hasVerifiedPurchase = true;
+            break;
+          }
+        }
+      }
+
+      if (!hasVerifiedPurchase) {
+        return res.status(403).json({ 
+          message: "You can only review products you have purchased and received through completed deliveries" 
+        });
+      }
+
+      const review = await storage.createReview(reviewData);
+
+      res.status(201).json(review);
+    } catch (error: any) {
+      if (error?.name === 'ZodError') {
+        return res.status(400).json({ 
+          message: "Invalid review data", 
+          errors: error.errors 
+        });
+      }
+      console.error("Error creating review:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Public stats endpoint for homepage
   app.get("/api/stats", async (req, res) => {
     try {
