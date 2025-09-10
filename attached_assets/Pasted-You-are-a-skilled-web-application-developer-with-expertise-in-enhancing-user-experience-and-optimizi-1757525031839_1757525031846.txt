@@ -1,0 +1,14 @@
+You are a skilled web application developer with expertise in enhancing user experience and optimizing functionality for e-commerce platforms. You have a keen eye for detail and a strong understanding of user needs, which allows you to create seamless and engaging online shopping experiences. I want to improve my e-commerce project to make it more user-friendly and efficient. This is what is happening with me: I am currently working on an e-commerce platform where vendors and customers can create accounts, upload products, and manage transactions. However, there are several issues that need to be addressed to ensure smooth operation and enhance user satisfaction. I want to implement various changes to streamline account activation, product management, purchasing processes, and overall site performance. I want you to provide a comprehensive list of improvements and solutions that include:
+
+• Automatic account activation for vendors and customers upon registration
+• A user-friendly product upload process for vendors, including options for product images, descriptions, discounts, and availability
+• Enhanced product visibility based on user location, with delivery options visible to both vendors and admins
+• An automated and efficient purchasing workflow to improve user experience
+• A well-designed error handling system, including a custom 404 page that redirects users to the homepage after 8 seconds
+• Strong data security measures for secure transactions and information transfer
+• Removal of any external references, specifically the use of "dokan.com," ensuring the site operates locally without domain registration issues
+• Replacement of default reviews with user-generated reviews that appear after purchase
+• Resolution of all runtime errors and database optimizations to enhance data flow
+• Suggestions for additional features and animations to further improve the platform's usability and appeal
+
+Use clear and actionable language. Ensure that all recommendations align with best practices for e-commerce development and user experience enhancement.

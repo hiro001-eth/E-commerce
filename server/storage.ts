@@ -147,8 +147,12 @@ export class MemStorage implements IStorage {
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const user: User = { 
-      ...insertUser, 
+      ...insertUser,
       id,
+      role: insertUser.role || "user",
+      isActive: insertUser.isActive !== undefined ? insertUser.isActive : true,
+      address: insertUser.address as any || null,
+      phone: insertUser.phone || null,
       createdAt: new Date(),
     };
     this.users.set(id, user);
@@ -186,6 +190,9 @@ export class MemStorage implements IStorage {
     const vendor: Vendor = {
       ...insertVendor,
       id,
+      storeDescription: insertVendor.storeDescription || null,
+      businessLicense: insertVendor.businessLicense || null,
+      isApproved: insertVendor.isApproved !== undefined ? insertVendor.isApproved : false,
       rating: "0",
       totalSales: "0",
       createdAt: new Date(),
@@ -234,6 +241,12 @@ export class MemStorage implements IStorage {
     const product: Product = {
       ...insertProduct,
       id,
+      categoryId: insertProduct.categoryId || null,
+      discountPrice: insertProduct.discountPrice || null,
+      stock: insertProduct.stock !== undefined ? insertProduct.stock : 0,
+      images: insertProduct.images || [],
+      isActive: insertProduct.isActive !== undefined ? insertProduct.isActive : true,
+      allowsCoupons: insertProduct.allowsCoupons !== undefined ? insertProduct.allowsCoupons : true,
       rating: "0",
       reviewCount: 0,
       createdAt: new Date(),
@@ -288,7 +301,7 @@ export class MemStorage implements IStorage {
     );
 
     if (existingCart) {
-      existingCart.quantity += insertCart.quantity;
+      existingCart.quantity += (insertCart.quantity || 1);
       this.carts.set(existingCart.id, existingCart);
       return existingCart;
     }
@@ -297,6 +310,7 @@ export class MemStorage implements IStorage {
     const cart: Cart = {
       ...insertCart,
       id,
+      quantity: insertCart.quantity || 1,
       createdAt: new Date(),
     };
     this.carts.set(id, cart);
@@ -347,6 +361,10 @@ export class MemStorage implements IStorage {
     const order: Order = {
       ...insertOrder,
       id,
+      status: insertOrder.status || "pending",
+      paymentMethod: insertOrder.paymentMethod || "cash",
+      couponCode: insertOrder.couponCode || null,
+      discount: insertOrder.discount || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -378,6 +396,7 @@ export class MemStorage implements IStorage {
     const review: Review = {
       ...insertReview,
       id,
+      comment: insertReview.comment || null,
       createdAt: new Date(),
     };
     this.reviews.set(id, review);
@@ -398,6 +417,11 @@ export class MemStorage implements IStorage {
     const coupon: Coupon = {
       ...insertCoupon,
       id,
+      isActive: insertCoupon.isActive !== undefined ? insertCoupon.isActive : true,
+      minOrderAmount: insertCoupon.minOrderAmount || null,
+      maxDiscount: insertCoupon.maxDiscount || null,
+      expiryDate: insertCoupon.expiryDate || null,
+      usageLimit: insertCoupon.usageLimit || null,
       usedCount: 0,
       createdAt: new Date(),
     };

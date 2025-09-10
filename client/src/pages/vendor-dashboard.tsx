@@ -14,7 +14,7 @@ import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Store, Package, BarChart3, Settings, Plus, Edit, Trash2, DollarSign } from "lucide-react";
-import type { User as UserType, Product, Order, Vendor } from "@/lib/types";
+import type { User as UserType, Product, Order, Vendor, Category } from "@/lib/types";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -35,11 +35,11 @@ export default function VendorDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: authData } = useQuery({
+  const { data: authData } = useQuery<{ user: UserType }>({
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: vendor } = useQuery({
+  const { data: vendor } = useQuery<Vendor>({
     queryKey: ["/api/vendor"],
     queryFn: async () => {
       const response = await fetch("/api/vendors/me", { credentials: "include" });
@@ -49,7 +49,7 @@ export default function VendorDashboard() {
     enabled: !!authData?.user,
   });
 
-  const { data: products = [], isLoading: productsLoading } = useQuery({
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
     queryKey: ["/api/products/vendor"],
     queryFn: async () => {
       const response = await fetch("/api/products/vendor", { credentials: "include" });
@@ -59,12 +59,12 @@ export default function VendorDashboard() {
     enabled: !!authData?.user,
   });
 
-  const { data: orders = [] } = useQuery({
+  const { data: orders = [] } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
     enabled: !!authData?.user,
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -86,7 +86,11 @@ export default function VendorDashboard() {
 
   const createProductMutation = useMutation({
     mutationFn: (data: ProductForm) =>
-      apiRequest("POST", "/api/products", { ...data, stock: Number(data.stock) }),
+      apiRequest("POST", "/api/products", { 
+        ...data, 
+        stock: Number(data.stock),
+        categoryId: data.categoryId === "no-category" ? null : data.categoryId
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products/vendor"] });
       toast({ title: "Product created successfully" });
@@ -100,7 +104,11 @@ export default function VendorDashboard() {
 
   const updateProductMutation = useMutation({
     mutationFn: ({ id, data }: { id: string; data: ProductForm }) =>
-      apiRequest("PUT", `/api/products/${id}`, { ...data, stock: Number(data.stock) }),
+      apiRequest("PUT", `/api/products/${id}`, { 
+        ...data, 
+        stock: Number(data.stock),
+        categoryId: data.categoryId === "no-category" ? null : data.categoryId
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products/vendor"] });
       toast({ title: "Product updated successfully" });
@@ -599,7 +607,7 @@ export default function VendorDashboard() {
                           <SelectValue placeholder="Select a category" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">No Category</SelectItem>
+                          <SelectItem value="no-category">No Category</SelectItem>
                           {categories.map((category: any) => (
                             <SelectItem key={category.id} value={category.id}>
                               {category.name}
