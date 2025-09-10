@@ -17,6 +17,10 @@ export default function Home() {
     retry: false,
   });
 
+  const { data: stats = { totalUsers: 0, activeStores: 0, productsListed: 0 } } = useQuery({
+    queryKey: ["/api/stats"],
+  });
+
   const featuredProducts = products.slice(0, 4);
 
   return (
@@ -53,18 +57,18 @@ export default function Home() {
                   <div className="bg-chart-1 rounded-lg p-4 text-white">
                     <Users className="w-8 h-8 mb-2" />
                     <p className="text-sm opacity-90">Total Users</p>
-                    <p className="text-2xl font-bold">12,543</p>
+                    <p className="text-2xl font-bold" data-testid="stat-total-users">{stats.totalUsers.toLocaleString()}</p>
                   </div>
                   <div className="bg-chart-2 rounded-lg p-4 text-white">
                     <Store className="w-8 h-8 mb-2" />
                     <p className="text-sm opacity-90">Active Stores</p>
-                    <p className="text-2xl font-bold">1,247</p>
+                    <p className="text-2xl font-bold" data-testid="stat-active-stores">{stats.activeStores.toLocaleString()}</p>
                   </div>
                 </div>
                 <div className="bg-chart-3 rounded-lg p-4 text-white">
                   <ShoppingBag className="w-8 h-8 mb-2" />
                   <p className="text-sm opacity-90">Products Listed</p>
-                  <p className="text-2xl font-bold">45,692</p>
+                  <p className="text-2xl font-bold" data-testid="stat-products-listed">{stats.productsListed.toLocaleString()}</p>
                 </div>
               </Card>
             </div>

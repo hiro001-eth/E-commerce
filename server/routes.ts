@@ -429,6 +429,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public stats endpoint for homepage
+  app.get("/api/stats", async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      const vendors = await storage.getAllVendors();
+      const products = await storage.getAllProducts();
+
+      const stats = {
+        totalUsers: users.filter(u => u.role === "user").length,
+        activeStores: vendors.filter(v => v.isApproved).length,
+        productsListed: products.length,
+      };
+
+      res.json(stats);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.get("/api/admin/stats", requireAuth, requireRole(["admin"]), async (req, res) => {
     try {
       const users = await storage.getAllUsers();
