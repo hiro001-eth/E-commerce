@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { X, Minus, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -6,15 +7,19 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { CartItemDTO as CartItem } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
+import CheckoutForm from "@/components/checkout-form";
 
 interface CartSidebarProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+type ViewMode = "cart" | "checkout";
+
 export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [viewMode, setViewMode] = useState<ViewMode>("cart");
 
   const { data: cartItems = [], isLoading } = useQuery<CartItem[]>({
     queryKey: ["/api/cart"],
@@ -52,6 +57,19 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
     return sum + (price * item.quantity);
   }, 0);
 
+  const handleCheckout = () => {
+    setViewMode("checkout");
+  };
+
+  const handleBackToCart = () => {
+    setViewMode("cart");
+  };
+
+  const handleOrderSuccess = () => {
+    setViewMode("cart");
+    onClose();
+  };
+
   return (
     <>
       {/* Overlay */}
@@ -65,14 +83,16 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
 
       {/* Sidebar */}
       <div 
-        className={`fixed top-0 right-0 h-full w-96 bg-card shadow-2xl z-50 transform transition-transform duration-300 ${
+        className={`fixed top-0 right-0 h-full ${viewMode === "checkout" ? "w-full" : "w-96"} bg-card shadow-2xl z-50 transform transition-all duration-300 ${
           isOpen ? "translate-x-0" : "translate-x-full"
         }`}
         data-testid="cart-sidebar"
       >
-        <div className="p-6 h-full flex flex-col">
-          <div className="flex justify-between items-center mb-6">
-            <h3 className="text-lg font-semibold text-foreground">Shopping Cart</h3>
+        <div className="p-6 h-full flex flex-col overflow-y-auto">
+          {viewMode === "cart" ? (
+            <>
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-lg font-semibold text-foreground">Shopping Cart</h3>
             <Button 
               variant="ghost" 
               size="icon" 
@@ -185,6 +205,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
               <Button 
                 className="w-full mb-2" 
                 size="lg"
+                onClick={handleCheckout}
                 data-testid="button-checkout"
               >
                 Proceed to Checkout
@@ -199,6 +220,14 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
                 Continue Shopping
               </Button>
             </div>
+          )}
+            </>
+          ) : (
+            <CheckoutForm 
+              cartItems={cartItems}
+              onBack={handleBackToCart}
+              onSuccess={handleOrderSuccess}
+            />
           )}
         </div>
       </div>
