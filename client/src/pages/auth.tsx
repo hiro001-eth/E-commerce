@@ -174,28 +174,6 @@ export default function Auth() {
                   </Button>
                 </form>
 
-                <div className="mt-6">
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-border" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">Quick Access</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 space-y-2">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={handleAdminLogin}
-                      data-testid="button-admin-login"
-                    >
-                      <Settings className="w-4 h-4 mr-2" />
-                      Admin Login
-                    </Button>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
