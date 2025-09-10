@@ -279,6 +279,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get products for authenticated vendor
+  app.get("/api/products/vendor", requireAuth, requireRole(["vendor"]), async (req, res) => {
+    try {
+      const vendor = await storage.getVendorByUserId(req.session.user!.id);
+      if (!vendor) {
+        return res.status(403).json({ message: "Vendor not found" });
+      }
+
+      const products = await storage.getProductsByVendor(vendor.id);
+      res.json(products);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/products", requireAuth, requireRole(["vendor"]), async (req, res) => {
     try {
       const vendor = await storage.getVendorByUserId(req.session.user!.id);
