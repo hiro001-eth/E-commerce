@@ -29,23 +29,28 @@ export default function AdminDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: authData } = useQuery({
+  const { data: authData } = useQuery<{ user: UserType }>({
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: stats } = useQuery({
+  const { data: stats = { totalUsers: 0, approvedVendors: 0, totalProducts: 0, revenue: 0 } } = useQuery<{
+    totalUsers: number;
+    approvedVendors: number;
+    totalProducts: number;
+    revenue: number;
+  }>({
     queryKey: ["/api/admin/stats"],
   });
 
-  const { data: users = [] } = useQuery({
+  const { data: users = [] } = useQuery<UserType[]>({
     queryKey: ["/api/admin/users"],
   });
 
-  const { data: vendors = [] } = useQuery({
+  const { data: vendors = [] } = useQuery<Vendor[]>({
     queryKey: ["/api/admin/vendors"],
   });
 
-  const { data: orders = [] } = useQuery({
+  const { data: orders = [] } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
 
@@ -66,7 +71,33 @@ export default function AdminDashboard() {
     },
   });
 
-  const user = authData?.user as UserType;
+  const toggleUserStatusMutation = useMutation({
+    mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
+      apiRequest("PUT", `/api/admin/users/${userId}/status`, { isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "User status updated successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to update user status", variant: "destructive" });
+    },
+  });
+
+  const deleteUserMutation = useMutation({
+    mutationFn: (userId: string) =>
+      apiRequest("DELETE", `/api/admin/users/${userId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/users"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "User deleted successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to delete user", variant: "destructive" });
+    },
+  });
+
+  const user = authData?.user;
 
   const filteredUsers = users.filter((u: UserType) =>
     u.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -381,18 +412,32 @@ export default function AdminDashboard() {
                                 <div className="flex space-x-2">
                                   <Button
                                     variant="ghost"
-                                    size="icon"
-                                    data-testid={`button-edit-user-${user.id}`}
+                                    size="sm"
+                                    className={user.isActive ? "text-destructive" : "text-green-600"}
+                                    onClick={() => toggleUserStatusMutation.mutate({ 
+                                      userId: user.id, 
+                                      isActive: !user.isActive 
+                                    })}
+                                    disabled={toggleUserStatusMutation.isPending}
+                                    data-testid={`button-toggle-user-${user.id}`}
                                   >
-                                    <Settings className="w-4 h-4" />
+                                    {user.isActive ? <UserX className="w-4 h-4 mr-1" /> : <UserCheck className="w-4 h-4 mr-1" />}
+                                    {user.isActive ? "Deactivate" : "Activate"}
                                   </Button>
                                   <Button
                                     variant="ghost"
-                                    size="icon"
-                                    className={user.isActive ? "text-destructive" : "text-green-600"}
-                                    data-testid={`button-toggle-user-${user.id}`}
+                                    size="sm"
+                                    className="text-destructive"
+                                    onClick={() => {
+                                      if (confirm(`Are you sure you want to delete user ${user.firstName} ${user.lastName}?`)) {
+                                        deleteUserMutation.mutate(user.id);
+                                      }
+                                    }}
+                                    disabled={deleteUserMutation.isPending}
+                                    data-testid={`button-delete-user-${user.id}`}
                                   >
-                                    {user.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                                    <XCircle className="w-4 h-4 mr-1" />
+                                    Delete
                                   </Button>
                                 </div>
                               </td>
