@@ -296,34 +296,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Regenerate session and set user data
-      req.session.regenerate((err) => {
-        if (err) {
-          console.error("Session regeneration error:", err);
-          return res.status(500).json({ message: "Session error" });
-        }
-        
-        // Set session with sanitized user data
-        req.session.user = SessionCrypto.sanitizeUserForSession(user);
-        
-        // Save session explicitly
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            console.error("Session save error:", saveErr);
-            return res.status(500).json({ message: "Session save error" });
-          }
-          
-          // Log security event
-          SecurityAudit.logSecurityEvent({
-            type: 'registration',
-            userId: user.id,
-            ip: req.ip,
-            userAgent: req.get('User-Agent')
-          });
-          
-          res.json({ user: mapUserToDTO(user) });
-        });
+      // Set session with sanitized user data
+      req.session.user = SessionCrypto.sanitizeUserForSession(user);
+      
+      // Log security event
+      SecurityAudit.logSecurityEvent({
+        type: 'registration',
+        userId: user.id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
       });
+      
+      res.json({ user: mapUserToDTO(user) });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -373,34 +357,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Account is disabled" });
       }
 
-      // Regenerate session and set user data
-      req.session.regenerate((err) => {
-        if (err) {
-          console.error("Session regeneration error:", err);
-          return res.status(500).json({ message: "Session error" });
-        }
-        
-        // Set session with sanitized user data
-        req.session.user = SessionCrypto.sanitizeUserForSession(user);
-        
-        // Save session explicitly
-        req.session.save((saveErr) => {
-          if (saveErr) {
-            console.error("Session save error:", saveErr);
-            return res.status(500).json({ message: "Session save error" });
-          }
-          
-          // Log successful login
-          SecurityAudit.logSecurityEvent({
-            type: 'login',
-            userId: user.id,
-            ip: req.ip,
-            userAgent: req.get('User-Agent')
-          });
-          
-          res.json({ user: mapUserToDTO(user) });
-        });
+      // Set session with sanitized user data
+      req.session.user = SessionCrypto.sanitizeUserForSession(user);
+      
+      // Log successful login
+      SecurityAudit.logSecurityEvent({
+        type: 'login',
+        userId: user.id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
       });
+      
+      res.json({ user: mapUserToDTO(user) });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
