@@ -188,6 +188,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         secure: false, // Set to true in production with HTTPS
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+        sameSite: "lax", // Important for cross-origin requests
       },
     })
   );
@@ -241,6 +242,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...userData, 
         password: hashedPassword 
       });
+      
+      // If user is registering as vendor, create vendor record
+      if (data.role === "vendor") {
+        await storage.createVendor({
+          userId: user.id,
+          storeName: `${user.firstName} ${user.lastName}'s Store`,
+          isApproved: true, // Automatic activation - no manual approval required
+        });
+      }
       
       // Set session with sanitized user data
       req.session.user = SessionCrypto.sanitizeUserForSession(user);
