@@ -10,6 +10,7 @@ import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import ReviewForm from "@/components/review-form";
+import ReviewPopup from "@/components/review-popup";
 import type { UserDTO as UserType, OrderDTO as Order, ProductDTO, OrderItemDTO } from "@shared/schema";
 
 export default function UserDashboard() {
@@ -24,6 +25,11 @@ export default function UserDashboard() {
     orderId: string;
     product: ProductDTO;
   } | null>(null);
+  const [showReviewPopup, setShowReviewPopup] = useState(false);
+  const [currentUnreviewedOrder, setCurrentUnreviewedOrder] = useState<{
+    order: Order;
+    products: ProductDTO[];
+  } | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -37,6 +43,16 @@ export default function UserDashboard() {
 
   const user = authData?.user;
 
+  const { data: unreviewedOrders = [] } = useQuery<{ order: Order; products: ProductDTO[] }[]>({
+    queryKey: ["/api/orders/unreviewed"],
+    queryFn: async () => {
+      const response = await fetch("/api/orders/unreviewed", { credentials: "include" });
+      if (!response.ok) throw new Error("Failed to fetch unreviewed orders");
+      return response.json();
+    },
+    enabled: !!user,
+  });
+
   // Update form data when user data changes
   useEffect(() => {
     if (user) {
@@ -47,6 +63,15 @@ export default function UserDashboard() {
       });
     }
   }, [user]);
+
+  // Show review popup for unreviewed delivered orders
+  useEffect(() => {
+    if (unreviewedOrders.length > 0 && !showReviewPopup) {
+      const firstUnreviewed = unreviewedOrders[0];
+      setCurrentUnreviewedOrder(firstUnreviewed);
+      setShowReviewPopup(true);
+    }
+  }, [unreviewedOrders, showReviewPopup]);
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: { firstName: string; lastName: string; phone: string }) => {
@@ -574,6 +599,20 @@ export default function UserDashboard() {
             }}
           />
         </div>
+      )}
+
+      {/* Review Popup for Delivered Orders */}
+      {showReviewPopup && currentUnreviewedOrder && (
+        <ReviewPopup
+          isOpen={showReviewPopup}
+          onClose={() => {
+            setShowReviewPopup(false);
+            setCurrentUnreviewedOrder(null);
+            queryClient.invalidateQueries({ queryKey: ["/api/orders/unreviewed"] });
+          }}
+          order={currentUnreviewedOrder.order}
+          products={currentUnreviewedOrder.products}
+        />
       )}
     </div>
   );

@@ -1130,6 +1130,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get unreviewed delivered orders for the current user
+  app.get("/api/orders/unreviewed", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.user!.id;
+      
+      // Get all delivered orders for the user
+      const deliveredOrders = await storage.getOrdersByUser(userId);
+      const deliveredOnly = deliveredOrders.filter(order => order.status === "delivered");
+      
+      // Get user's reviews to check which products they've already reviewed
+      const userReviews = await storage.getReviewsByUser(userId);
+      const reviewedProductIds = new Set(userReviews.map(review => review.productId));
+      
+      // Filter orders that contain unreviewed products
+      const unreviewed = [];
+      
+      for (const order of deliveredOnly) {
+        const orderItems = await storage.getOrderItemsByOrder(order.id);
+        const unreviewedProducts = [];
+        
+        for (const item of orderItems) {
+          if (!reviewedProductIds.has(item.productId)) {
+            const product = await storage.getProduct(item.productId);
+            if (product) {
+              const vendor = await storage.getVendor(product.vendorId);
+              unreviewedProducts.push(mapProductToDTO(product, vendor || undefined));
+            }
+          }
+        }
+        
+        if (unreviewedProducts.length > 0) {
+          unreviewed.push({
+            order: mapOrderToDTO(order),
+            products: unreviewedProducts
+          });
+        }
+      }
+      
+      res.json(unreviewed);
+    } catch (error) {
+      console.error("Error fetching unreviewed orders:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   app.post("/api/reviews", requireAuth, async (req, res) => {
     try {
       const userId = req.session.user!.id;
