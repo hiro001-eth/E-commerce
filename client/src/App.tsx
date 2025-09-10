@@ -18,6 +18,9 @@ import Privacy from "@/pages/privacy";
 import Terms from "@/pages/terms";
 import ReturnPolicy from "@/pages/return-policy";
 import Shipping from "@/pages/shipping";
+import FAQ from "@/pages/faq";
+import VendorGuide from "@/pages/vendor-guide";
+import TechnicalDocs from "@/pages/docs";
 import UserDashboard from "@/pages/user-dashboard";
 import VendorDashboard from "@/pages/vendor-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -52,6 +55,9 @@ function AppContent() {
         <Route path="/terms" component={Terms} />
         <Route path="/return-policy" component={ReturnPolicy} />
         <Route path="/shipping" component={Shipping} />
+        <Route path="/faq" component={FAQ} />
+        <Route path="/vendor-guide" component={VendorGuide} />
+        <Route path="/docs" component={TechnicalDocs} />
         
         <Route path="/dashboard/user">
           <ProtectedRoute allowedRoles={["user"]}>
