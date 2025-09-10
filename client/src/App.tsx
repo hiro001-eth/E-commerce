@@ -25,7 +25,6 @@ import ProtectedRoute from "@/components/protected-route";
 import NotFound from "@/pages/not-found";
 
 function AppContent() {
-  const [isLoading, setIsLoading] = useState(true);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Check authentication status
@@ -34,21 +33,9 @@ function AppContent() {
     retry: false,
   });
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsLoading(false);
-    }, 2000);
-
-    return () => clearTimeout(timer);
-  }, []);
-
   const toggleCart = () => {
     setIsCartOpen(!isCartOpen);
   };
-
-  if (isLoading) {
-    return <LoadingScreen />;
-  }
 
   return (
     <>
