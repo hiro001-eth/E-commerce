@@ -77,6 +77,10 @@ export interface IStorage {
   // Category methods
   getAllCategories(): Promise<Category[]>;
   createCategory(name: string, description?: string): Promise<Category>;
+
+  // Location-based filtering methods
+  getProductsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Product[]>;
+  getVendorsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Vendor[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -458,6 +462,82 @@ export class MemStorage implements IStorage {
     };
     this.categories.set(id, category);
     return category;
+  }
+
+  // Location-based filtering methods
+  async getVendorsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Vendor[]> {
+    const { city, state, zipCode } = filter;
+    
+    return Array.from(this.vendors.values()).filter(vendor => {
+      if (!vendor.isApproved) return false;
+      
+      // Check if vendor has store location or delivery areas set up
+      const hasStoreLocation = vendor.storeLocation && 
+        (vendor.storeLocation.city || vendor.storeLocation.state);
+      const hasDeliveryAreas = vendor.deliveryAreas && vendor.deliveryAreas.length > 0;
+      
+      if (!hasStoreLocation && !hasDeliveryAreas) return false;
+
+      // Check delivery areas for direct match
+      if (hasDeliveryAreas && (city || state || zipCode)) {
+        const searchLocation = [city, state, zipCode].filter(Boolean).join(' ').toLowerCase();
+        const matchesDeliveryAreas = vendor.deliveryAreas!.some(area => 
+          area.toLowerCase().includes(searchLocation) ||
+          searchLocation.includes(area.toLowerCase())
+        );
+        if (matchesDeliveryAreas) return true;
+      }
+
+      // Check store location for match
+      if (hasStoreLocation) {
+        const storeLocation = vendor.storeLocation!;
+        if (city && storeLocation.city && 
+            storeLocation.city.toLowerCase().includes(city.toLowerCase())) {
+          return true;
+        }
+        if (state && storeLocation.state && 
+            storeLocation.state.toLowerCase().includes(state.toLowerCase())) {
+          return true;
+        }
+        if (zipCode && storeLocation.zipCode && 
+            storeLocation.zipCode.includes(zipCode)) {
+          return true;
+        }
+      }
+
+      return false;
+    });
+  }
+
+  async getProductsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Product[]> {
+    const { city, state, zipCode } = filter;
+    
+    // First, get vendors that can deliver to this location
+    const availableVendors = await this.getVendorsByLocation(filter);
+    const vendorIds = new Set(availableVendors.map(v => v.id));
+    
+    // Filter products by available vendors
+    let locationProducts = Array.from(this.products.values()).filter(product => {
+      if (!product.isActive) return false;
+      
+      // Must be from a vendor that delivers to the location
+      if (!vendorIds.has(product.vendorId)) return false;
+      
+      // Check product-specific available areas
+      if (product.availableInAreas && product.availableInAreas.length > 0) {
+        const searchLocation = [city, state, zipCode].filter(Boolean).join(' ').toLowerCase();
+        const isAvailableInArea = product.availableInAreas.some(area => 
+          area.toLowerCase().includes(searchLocation) ||
+          searchLocation.includes(area.toLowerCase())
+        );
+        return isAvailableInArea;
+      }
+      
+      // If product doesn't specify areas, rely on vendor's delivery capability
+      return true;
+    });
+
+    return locationProducts;
   }
 }
 

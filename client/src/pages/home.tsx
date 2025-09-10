@@ -2,15 +2,38 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Users, Store, ShoppingBag, User, Settings } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Users, Store, ShoppingBag, User, Settings, MapPin, Filter } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import ProductCard from "@/components/product-card";
 import RecentReviews from "@/components/recent-reviews";
-import type { Product } from "@/lib/types";
+import type { Product, User as UserType, LocationFilter } from "@shared/schema";
 
 export default function Home() {
+  const [locationFilter, setLocationFilter] = useState<LocationFilter>({
+    city: "",
+    state: "",
+    zipCode: "",
+    radius: 25
+  });
+  const [showLocationFilter, setShowLocationFilter] = useState(false);
+
   const { data: products = [] } = useQuery<Product[]>({
-    queryKey: ["/api/products"],
+    queryKey: ["/api/products", locationFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (locationFilter.city) params.append('city', locationFilter.city);
+      if (locationFilter.state) params.append('state', locationFilter.state);
+      if (locationFilter.zipCode) params.append('zipCode', locationFilter.zipCode);
+      if (locationFilter.radius !== 25) params.append('radius', locationFilter.radius.toString());
+      
+      const url = `/api/products${params.toString() ? `?${params.toString()}` : ''}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch products');
+      return response.json();
+    },
   });
 
   const { data: authData } = useQuery({
@@ -33,6 +56,85 @@ export default function Home() {
       {/* Hero Section */}
       <section className="relative bg-gradient-to-r from-primary/10 to-primary/5 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Location Filter Bar */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-2xl font-semibold text-foreground">Products Near You</h2>
+              <Button
+                variant="outline"
+                onClick={() => setShowLocationFilter(!showLocationFilter)}
+                data-testid="button-toggle-location-filter"
+              >
+                <MapPin className="w-4 h-4 mr-2" />
+                {showLocationFilter ? 'Hide Filters' : 'Set Location'}
+              </Button>
+            </div>
+            
+            {showLocationFilter && (
+              <Card className="p-4 mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <Label htmlFor="filter-city">City</Label>
+                    <Input
+                      id="filter-city"
+                      placeholder="Enter city"
+                      value={locationFilter.city}
+                      onChange={(e) => setLocationFilter(prev => ({ ...prev, city: e.target.value }))}
+                      data-testid="input-filter-city"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="filter-state">State</Label>
+                    <Input
+                      id="filter-state"
+                      placeholder="Enter state"
+                      value={locationFilter.state}
+                      onChange={(e) => setLocationFilter(prev => ({ ...prev, state: e.target.value }))}
+                      data-testid="input-filter-state"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="filter-zip">ZIP Code</Label>
+                    <Input
+                      id="filter-zip"
+                      placeholder="Enter ZIP code"
+                      value={locationFilter.zipCode}
+                      onChange={(e) => setLocationFilter(prev => ({ ...prev, zipCode: e.target.value }))}
+                      data-testid="input-filter-zip"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="filter-radius">Radius (km)</Label>
+                    <Input
+                      id="filter-radius"
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={locationFilter.radius}
+                      onChange={(e) => setLocationFilter(prev => ({ ...prev, radius: parseInt(e.target.value) || 25 }))}
+                      data-testid="input-filter-radius"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setLocationFilter({ city: '', state: '', zipCode: '', radius: 25 })}
+                    data-testid="button-clear-location"
+                  >
+                    Clear Filters
+                  </Button>
+                  {(locationFilter.city || locationFilter.state || locationFilter.zipCode) && (
+                    <Badge variant="secondary" className="flex items-center gap-1">
+                      <Filter className="w-3 h-3" />
+                      Location filters active
+                    </Badge>
+                  )}
+                </div>
+              </Card>
+            )}
+          </div>
+          
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h1 className="text-5xl font-bold text-foreground mb-6">

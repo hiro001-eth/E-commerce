@@ -29,6 +29,19 @@ export const vendors = pgTable("vendors", {
   storeName: text("store_name").notNull(),
   storeDescription: text("store_description"),
   businessLicense: text("business_license"),
+  storeLocation: jsonb("store_location").$type<{
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+  }>(),
+  deliveryAreas: text("delivery_areas").array().default([]), // Array of cities/areas they deliver to
+  deliveryRadius: integer("delivery_radius").default(10), // Delivery radius in km
+  deliveryFee: decimal("delivery_fee", { precision: 8, scale: 2 }).default("0"),
+  freeDeliveryThreshold: decimal("free_delivery_threshold", { precision: 8, scale: 2 }).default("50"),
   isApproved: boolean("is_approved").notNull().default(true),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
   totalSales: decimal("total_sales", { precision: 12, scale: 2 }).default("0"),
@@ -53,6 +66,8 @@ export const products = pgTable("products", {
   stock: integer("stock").notNull().default(0),
   images: text("images").array().default([]),
   sku: text("sku").notNull().unique(),
+  availableInAreas: text("available_in_areas").array().default([]), // Areas where this product is available
+  requiresShipping: boolean("requires_shipping").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),
   allowsCoupons: boolean("allows_coupons").notNull().default(true),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
@@ -207,3 +222,22 @@ export const registerSchema = insertUserSchema.extend({
 
 export type LoginRequest = z.infer<typeof loginSchema>;
 export type RegisterRequest = z.infer<typeof registerSchema>;
+
+// Location-based query schemas  
+export const locationFilterSchema = z.object({
+  city: z.string().optional(),
+  state: z.string().optional(), 
+  zipCode: z.string().optional(),
+  radius: z.number().min(1).max(100).default(25), // km radius
+});
+
+export const userLocationSchema = z.object({
+  street: z.string().optional(),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  zipCode: z.string().min(1, "ZIP code is required"),
+  country: z.string().default("United States"),
+});
+
+export type LocationFilter = z.infer<typeof locationFilterSchema>;
+export type UserLocation = z.infer<typeof userLocationSchema>;

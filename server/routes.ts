@@ -10,6 +10,8 @@ import {
   insertOrderSchema,
   insertReviewSchema,
   insertCouponSchema,
+  locationFilterSchema,
+  insertVendorSchema,
   type User 
 } from "@shared/schema";
 import { z } from "zod";
@@ -260,18 +262,111 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update vendor store location
+  app.put("/api/vendor/location", requireAuth, requireRole(["vendor"]), async (req, res) => {
+    try {
+      const vendor = await storage.getVendorByUserId(req.session.user!.id);
+      if (!vendor) {
+        return res.status(403).json({ message: "Vendor not found" });
+      }
+
+      const { street, city, state, zipCode, country, latitude, longitude } = req.body;
+
+      const storeLocation = {
+        street: street || null,
+        city: city || null,
+        state: state || null,
+        zipCode: zipCode || null,
+        country: country || null,
+        latitude: latitude || null,
+        longitude: longitude || null,
+      };
+
+      const updatedVendor = await storage.updateVendor(vendor.id, { storeLocation });
+      if (!updatedVendor) {
+        return res.status(500).json({ message: "Failed to update location" });
+      }
+
+      res.json(updatedVendor);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Update vendor delivery settings
+  app.put("/api/vendor/delivery", requireAuth, requireRole(["vendor"]), async (req, res) => {
+    try {
+      const vendor = await storage.getVendorByUserId(req.session.user!.id);
+      if (!vendor) {
+        return res.status(403).json({ message: "Vendor not found" });
+      }
+
+      const { deliveryAreas, deliveryRadius, deliveryFee, freeDeliveryThreshold } = req.body;
+
+      const updates: any = {};
+      if (deliveryAreas !== undefined) updates.deliveryAreas = deliveryAreas;
+      if (deliveryRadius !== undefined) updates.deliveryRadius = deliveryRadius;
+      if (deliveryFee !== undefined) updates.deliveryFee = deliveryFee.toString();
+      if (freeDeliveryThreshold !== undefined) updates.freeDeliveryThreshold = freeDeliveryThreshold.toString();
+
+      const updatedVendor = await storage.updateVendor(vendor.id, updates);
+      if (!updatedVendor) {
+        return res.status(500).json({ message: "Failed to update delivery settings" });
+      }
+
+      res.json(updatedVendor);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
   // Product routes
   app.get("/api/products", async (req, res) => {
     try {
-      const { search, category } = req.query;
+      const { search, category, city, state, zipCode, radius } = req.query;
       
       let products;
-      if (search) {
-        products = await storage.searchProducts(search as string);
-      } else if (category) {
-        products = await storage.getProductsByCategory(category as string);
+      
+      // Handle location-based filtering
+      if (city || state || zipCode) {
+        try {
+          const locationFilter = locationFilterSchema.parse({
+            city: city as string,
+            state: state as string,
+            zipCode: zipCode as string,
+            radius: radius ? parseInt(radius as string) : undefined,
+          });
+          
+          products = await storage.getProductsByLocation(locationFilter);
+          
+          // Apply additional filters if present
+          if (search) {
+            const searchTerm = search.toString().toLowerCase();
+            products = products.filter(product => 
+              product.name.toLowerCase().includes(searchTerm) ||
+              product.description.toLowerCase().includes(searchTerm)
+            );
+          }
+          
+          if (category) {
+            products = products.filter(product => product.categoryId === category);
+          }
+          
+        } catch (validationError) {
+          return res.status(400).json({ 
+            message: "Invalid location parameters",
+            errors: validationError instanceof z.ZodError ? validationError.errors : []
+          });
+        }
       } else {
-        products = await storage.getAllProducts();
+        // Original filtering logic when no location specified
+        if (search) {
+          products = await storage.searchProducts(search as string);
+        } else if (category) {
+          products = await storage.getProductsByCategory(category as string);
+        } else {
+          products = await storage.getAllProducts();
+        }
       }
 
       res.json(products);
