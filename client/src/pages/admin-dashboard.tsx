@@ -21,7 +21,7 @@ import {
   XCircle,
   BarChart3
 } from "lucide-react";
-import type { User as UserType, Vendor, Order } from "@/lib/types";
+import type { User as UserType, Vendor, Product, Order } from "@shared/schema";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -33,9 +33,9 @@ export default function AdminDashboard() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: stats = { totalUsers: 0, approvedVendors: 0, totalProducts: 0, revenue: 0 } } = useQuery<{
+  const { data: stats = { totalUsers: 0, totalVendors: 0, totalProducts: 0, revenue: 0 } } = useQuery<{
     totalUsers: number;
-    approvedVendors: number;
+    totalVendors: number;
     totalProducts: number;
     revenue: number;
   }>({
@@ -54,22 +54,11 @@ export default function AdminDashboard() {
     queryKey: ["/api/orders"],
   });
 
-  const { data: products = [] } = useQuery({
+  const { data: products = [] } = useQuery<Product[]>({
     queryKey: ["/api/products"],
   });
 
-  const approveVendorMutation = useMutation({
-    mutationFn: (vendorId: string) =>
-      apiRequest("PUT", `/api/admin/vendors/${vendorId}/approve`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendors"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
-      toast({ title: "Vendor approved successfully" });
-    },
-    onError: () => {
-      toast({ title: "Failed to approve vendor", variant: "destructive" });
-    },
-  });
+  // Note: Vendor approval is now automatic - no manual approval needed
 
   const toggleUserStatusMutation = useMutation({
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
@@ -109,8 +98,8 @@ export default function AdminDashboard() {
     v.storeName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const pendingVendors = vendors.filter((v: Vendor) => !v.isApproved);
-  const approvedVendors = vendors.filter((v: Vendor) => v.isApproved);
+  // All vendors are automatically approved upon registration
+  const recentVendors = vendors.slice(0, 5);
   const recentOrders = orders.slice(0, 5);
 
   if (!user || user.role !== "admin") {
@@ -227,7 +216,7 @@ export default function AdminDashboard() {
                         <div>
                           <p className="text-muted-foreground text-sm">Active Vendors</p>
                           <p className="text-2xl font-bold text-foreground" data-testid="text-active-vendors-stat">
-                            {stats?.approvedVendors || approvedVendors.length}
+                            {stats?.totalVendors || vendors.length}
                           </p>
                           <p className="text-xs text-chart-2">+8% from last month</p>
                         </div>
@@ -269,46 +258,33 @@ export default function AdminDashboard() {
 
                 {/* Management Overview */}
                 <div className="grid lg:grid-cols-2 gap-6">
-                  {/* Pending Vendor Approvals */}
+                  {/* Recent Vendor Registrations */}
                   <Card>
                     <CardHeader>
-                      <CardTitle>Pending Vendor Approvals</CardTitle>
+                      <CardTitle>Recent Vendor Registrations</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      {pendingVendors.length === 0 ? (
-                        <p className="text-muted-foreground text-center py-4">No pending approvals</p>
+                      {recentVendors.length === 0 ? (
+                        <p className="text-muted-foreground text-center py-4">No vendor registrations yet</p>
                       ) : (
                         <div className="space-y-3">
-                          {pendingVendors.slice(0, 5).map((vendor: Vendor) => (
+                          {recentVendors.map((vendor: Vendor) => (
                             <div
                               key={vendor.id}
                               className="flex items-center justify-between p-3 border border-border rounded-lg"
-                              data-testid={`pending-vendor-${vendor.id}`}
+                              data-testid={`recent-vendor-${vendor.id}`}
                             >
                               <div>
                                 <p className="font-medium text-sm" data-testid={`text-vendor-name-${vendor.id}`}>
                                   {vendor.storeName}
                                 </p>
-                                <p className="text-xs text-muted-foreground">Pending approval</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Automatically activated • {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString() : 'Recently'}
+                                </p>
                               </div>
-                              <div className="flex space-x-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => approveVendorMutation.mutate(vendor.id)}
-                                  disabled={approveVendorMutation.isPending}
-                                  data-testid={`button-approve-${vendor.id}`}
-                                >
-                                  <CheckCircle className="w-4 h-4 mr-1" />
-                                  Approve
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="destructive"
-                                  data-testid={`button-reject-${vendor.id}`}
-                                >
-                                  <XCircle className="w-4 h-4 mr-1" />
-                                  Reject
-                                </Button>
+                              <div className="flex items-center space-x-2">
+                                <div className="w-3 h-3 bg-green-500 rounded-full" />
+                                <span className="text-xs text-green-600 font-medium">Active</span>
                               </div>
                             </div>
                           ))}
@@ -338,7 +314,7 @@ export default function AdminDashboard() {
                                   Order #{order.id.slice(0, 8)}
                                 </p>
                                 <p className="text-xs text-muted-foreground">
-                                  {new Date(order.createdAt).toLocaleDateString()}
+                                  {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Recently'}
                                 </p>
                               </div>
                               <div className="text-right">
@@ -502,20 +478,14 @@ export default function AdminDashboard() {
                                 </Badge>
                               </td>
                               <td className="py-4" data-testid={`text-vendor-sales-${vendor.id}`}>
-                                ${parseFloat(vendor.totalSales).toFixed(2)}
+                                ${parseFloat(vendor.totalSales || '0').toFixed(2)}
                               </td>
                               <td className="py-4">
                                 <div className="flex space-x-2">
-                                  {!vendor.isApproved && (
-                                    <Button
-                                      size="sm"
-                                      onClick={() => approveVendorMutation.mutate(vendor.id)}
-                                      disabled={approveVendorMutation.isPending}
-                                      data-testid={`button-approve-vendor-${vendor.id}`}
-                                    >
-                                      Approve
-                                    </Button>
-                                  )}
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-3 h-3 bg-green-500 rounded-full" />
+                                    <span className="text-xs text-green-600 font-medium">Active</span>
+                                  </div>
                                   <Button
                                     variant="ghost"
                                     size="icon"
@@ -577,7 +547,7 @@ export default function AdminDashboard() {
                                 <Badge variant="secondary">{order.status}</Badge>
                               </td>
                               <td className="py-4">
-                                {new Date(order.createdAt).toLocaleDateString()}
+                                {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Recently'}
                               </td>
                             </tr>
                           ))}
@@ -616,7 +586,7 @@ export default function AdminDashboard() {
                       <div>
                         <label className="text-sm font-medium text-foreground">Active Vendors</label>
                         <p className="text-muted-foreground" data-testid="text-settings-active-vendors">
-                          {approvedVendors.length}
+                          {vendors.length}
                         </p>
                       </div>
                     </div>

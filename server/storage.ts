@@ -193,7 +193,7 @@ export class MemStorage implements IStorage {
       id,
       storeDescription: insertVendor.storeDescription || null,
       businessLicense: insertVendor.businessLicense || null,
-      isApproved: insertVendor.isApproved !== undefined ? insertVendor.isApproved : false,
+      isApproved: insertVendor.isApproved !== undefined ? insertVendor.isApproved : true,
       rating: "0",
       totalSales: "0",
       createdAt: new Date(),

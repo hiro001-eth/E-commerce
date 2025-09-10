@@ -29,7 +29,7 @@ export const vendors = pgTable("vendors", {
   storeName: text("store_name").notNull(),
   storeDescription: text("store_description"),
   businessLicense: text("business_license"),
-  isApproved: boolean("is_approved").notNull().default(false),
+  isApproved: boolean("is_approved").notNull().default(true),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
   totalSales: decimal("total_sales", { precision: 12, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow(),

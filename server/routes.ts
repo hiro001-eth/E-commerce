@@ -238,7 +238,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         storeName,
         storeDescription: storeDescription || null,
         businessLicense: businessLicense || null,
-        isApproved: false,
+        isApproved: true, // Automatic activation - no manual approval required
       });
 
       res.json(vendor);
@@ -721,8 +721,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const stats = {
         totalUsers: users.filter(u => u.role === "user").length,
-        totalVendors: vendors.length,
-        approvedVendors: vendors.filter(v => v.isApproved).length,
+        totalVendors: vendors.length, // All vendors are automatically approved
         totalProducts: products.length,
         totalOrders: orders.length,
         revenue: orders.reduce((sum, order) => sum + parseFloat(order.total), 0),
