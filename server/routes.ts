@@ -13,6 +13,7 @@ import {
   type User 
 } from "@shared/schema";
 import { z } from "zod";
+import { PasswordCrypto, DataCrypto, SessionCrypto, InputSecurity, SecurityAudit } from "./crypto";
 
 const MemStore = MemoryStore(session);
 
@@ -60,6 +61,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const data = registerSchema.parse(req.body);
       
+      // Validate password strength
+      const passwordValidation = InputSecurity.validatePasswordStrength(data.password);
+      if (!passwordValidation.isValid) {
+        return res.status(400).json({ 
+          message: "Password does not meet security requirements", 
+          errors: passwordValidation.errors 
+        });
+      }
+      
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(data.email);
       if (existingUser) {
@@ -71,12 +81,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Username already taken" });
       }
 
-      // Create user
-      const { confirmPassword, ...userData } = data;
-      const user = await storage.createUser(userData);
+      // Hash password before storing
+      const { confirmPassword, password, ...userData } = data;
+      const hashedPassword = await PasswordCrypto.hashPassword(password);
       
-      // Set session
-      req.session.user = user;
+      // Create user with hashed password
+      const user = await storage.createUser({ 
+        ...userData, 
+        password: hashedPassword 
+      });
+      
+      // Set session with sanitized user data
+      req.session.user = SessionCrypto.sanitizeUserForSession(user);
+      
+      // Log security event
+      SecurityAudit.logSecurityEvent({
+        type: 'registration',
+        userId: user.id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
       
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
@@ -92,15 +116,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const data = loginSchema.parse(req.body);
       
       const user = await storage.getUserByEmail(data.email);
-      if (!user || user.password !== data.password) {
+      if (!user) {
+        // Log failed login attempt
+        SecurityAudit.logSecurityEvent({
+          type: 'failed_login',
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+          details: { email: data.email, reason: 'user_not_found' }
+        });
+        return res.status(401).json({ message: "Invalid credentials" });
+      }
+
+      // Compare password with hashed version
+      const isPasswordValid = await PasswordCrypto.comparePassword(data.password, user.password);
+      if (!isPasswordValid) {
+        // Log failed login attempt
+        SecurityAudit.logSecurityEvent({
+          type: 'failed_login',
+          userId: user.id,
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+          details: { email: data.email, reason: 'invalid_password' }
+        });
         return res.status(401).json({ message: "Invalid credentials" });
       }
 
       if (!user.isActive) {
+        SecurityAudit.logSecurityEvent({
+          type: 'failed_login',
+          userId: user.id,
+          ip: req.ip,
+          userAgent: req.get('User-Agent'),
+          details: { email: data.email, reason: 'account_disabled' }
+        });
         return res.status(401).json({ message: "Account is disabled" });
       }
 
-      req.session.user = user;
+      // Set session with sanitized user data
+      req.session.user = SessionCrypto.sanitizeUserForSession(user);
+      
+      // Log successful login
+      SecurityAudit.logSecurityEvent({
+        type: 'login',
+        userId: user.id,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+      
       res.json({ user: { ...user, password: undefined } });
     } catch (error) {
       if (error instanceof z.ZodError) {

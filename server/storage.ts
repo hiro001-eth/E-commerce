@@ -17,6 +17,7 @@ import {
   type OrderItem,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import { PasswordCrypto } from "./crypto";
 
 export interface IStorage {
   // User methods
@@ -89,17 +90,18 @@ export class MemStorage implements IStorage {
   private orderItems: Map<string, OrderItem> = new Map();
 
   constructor() {
-    this.initializeData();
+    this.initializeData().catch(console.error);
   }
 
-  private initializeData() {
-    // Create default admin user
+  private async initializeData() {
+    // Create default admin user with hashed password
     const adminId = randomUUID();
+    const hashedPassword = await PasswordCrypto.hashPassword("admin123");
     const admin: User = {
       id: adminId,
       username: "admin",
       email: "admin@dokan.com",
-      password: "admin123", // In production, this should be hashed
+      password: hashedPassword,
       role: "admin",
       firstName: "Admin",
       lastName: "User",
