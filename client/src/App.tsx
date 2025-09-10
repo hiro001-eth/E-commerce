@@ -26,6 +26,7 @@ import VendorDashboard from "@/pages/vendor-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
 import ProtectedRoute from "@/components/protected-route";
 import NotFound from "@/pages/not-found";
+import AIChatbot from "@/components/ai-chatbot";
 
 function AppContent() {
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -44,6 +45,7 @@ function AppContent() {
     <>
       <Navbar user={authData?.user} onCartToggle={toggleCart} />
       <CartSidebar isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
+      <AIChatbot />
       
       <Switch>
         <Route path="/" component={Home} />

@@ -36,6 +36,7 @@ import {
 } from "@shared/schema";
 import { z } from "zod";
 import { PasswordCrypto, DataCrypto, SessionCrypto, InputSecurity, SecurityAudit } from "./crypto";
+import { getChatResponse, type ChatRequest } from "./openai";
 
 const MemStore = MemoryStore(session);
 
@@ -1304,6 +1305,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(stats);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // AI Chat endpoint
+  app.post("/api/ai/chat", async (req, res) => {
+    try {
+      const { message, history } = req.body;
+      
+      if (!message || typeof message !== 'string' || message.trim().length === 0) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+
+      if (message.length > 1000) {
+        return res.status(400).json({ message: "Message too long" });
+      }
+
+      const chatRequest: ChatRequest = {
+        message: message.trim(),
+        history: Array.isArray(history) ? history.slice(-5) : []
+      };
+
+      const response = await getChatResponse(chatRequest);
+      res.json(response);
+    } catch (error) {
+      console.error("AI Chat error:", error);
+      res.status(500).json({ 
+        message: "AI service temporarily unavailable", 
+        suggestedLinks: [
+          { text: "Contact Support", url: "/contact", description: "Get help from our team" },
+          { text: "FAQ", url: "/faq", description: "Find quick answers" }
+        ]
+      });
     }
   });
 
