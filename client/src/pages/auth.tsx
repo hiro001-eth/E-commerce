@@ -107,7 +107,7 @@ export default function Auth() {
   // Admin quick login
   const handleAdminLogin = () => {
     loginMutation.mutate({
-      email: "admin@dokan.com",
+      email: "admin@localhost",
       password: "admin123",
     });
   };

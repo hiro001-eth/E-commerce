@@ -14,6 +14,10 @@ import Auth from "@/pages/auth";
 import Shop from "@/pages/shop";
 import About from "@/pages/about";
 import Contact from "@/pages/contact";
+import Privacy from "@/pages/privacy";
+import Terms from "@/pages/terms";
+import ReturnPolicy from "@/pages/return-policy";
+import Shipping from "@/pages/shipping";
 import UserDashboard from "@/pages/user-dashboard";
 import VendorDashboard from "@/pages/vendor-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
@@ -25,7 +29,7 @@ function AppContent() {
   const [isCartOpen, setIsCartOpen] = useState(false);
 
   // Check authentication status
-  const { data: authData } = useQuery({
+  const { data: authData } = useQuery<{ user: any }>({
     queryKey: ["/api/auth/me"],
     retry: false,
   });
@@ -57,6 +61,10 @@ function AppContent() {
         <Route path="/shop" component={Shop} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
+        <Route path="/privacy" component={Privacy} />
+        <Route path="/terms" component={Terms} />
+        <Route path="/return-policy" component={ReturnPolicy} />
+        <Route path="/shipping" component={Shipping} />
         
         <Route path="/dashboard/user">
           <ProtectedRoute allowedRoles={["user"]}>

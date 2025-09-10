@@ -199,7 +199,7 @@ export default function Contact() {
                     <div>
                       <p className="font-medium text-foreground">Email</p>
                       <p className="text-muted-foreground" data-testid="text-email">
-                        support@dokan.com
+                        support@localhost
                       </p>
                     </div>
                   </div>

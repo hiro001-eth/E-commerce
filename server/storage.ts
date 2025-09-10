@@ -100,7 +100,7 @@ export class MemStorage implements IStorage {
     const admin: User = {
       id: adminId,
       username: "admin",
-      email: "admin@dokan.com",
+      email: "admin@localhost",
       password: hashedPassword,
       role: "admin",
       firstName: "Admin",

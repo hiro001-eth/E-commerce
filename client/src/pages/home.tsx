@@ -227,28 +227,28 @@ export default function Home() {
               <ul className="space-y-2 text-sm">
                 <li><Link href="/" className="text-muted-foreground hover:text-primary smooth-transition">Home</Link></li>
                 <li><Link href="/shop" className="text-muted-foreground hover:text-primary smooth-transition">Shop</Link></li>
-                <li><a href="https://docs.dokan.com/vendor-guide" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Vendor Application Guide</a></li>
-                <li><a href="https://help.dokan.com/faq" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">User Manual & FAQ</a></li>
+                <li><Link href="/vendor-guide" className="text-muted-foreground hover:text-primary smooth-transition">Vendor Application Guide</Link></li>
+                <li><Link href="/faq" className="text-muted-foreground hover:text-primary smooth-transition">User Manual & FAQ</Link></li>
               </ul>
             </div>
             
             <div>
               <h3 className="font-semibold text-foreground mb-4">Resources</h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="https://developers.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Technical Documentation</a></li>
-                <li><a href="https://community.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Community Forum</a></li>
-                <li><a href="https://blog.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Blog & Updates</a></li>
-                <li><a href="https://status.dokan.com" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Service Status</a></li>
+                <li><Link href="/docs" className="text-muted-foreground hover:text-primary smooth-transition">Technical Documentation</Link></li>
+                <li><Link href="/community" className="text-muted-foreground hover:text-primary smooth-transition">Community Forum</Link></li>
+                <li><Link href="/blog" className="text-muted-foreground hover:text-primary smooth-transition">Blog & Updates</Link></li>
+                <li><Link href="/status" className="text-muted-foreground hover:text-primary smooth-transition">Service Status</Link></li>
               </ul>
             </div>
             
             <div>
               <h3 className="font-semibold text-foreground mb-4">Legal & Policies</h3>
               <ul className="space-y-2 text-sm">
-                <li><a href="https://dokan.com/privacy" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Privacy Policy</a></li>
-                <li><a href="https://dokan.com/terms" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Terms of Service</a></li>
-                <li><a href="https://dokan.com/return-policy" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Return & Refund Policy</a></li>
-                <li><a href="https://dokan.com/shipping" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary smooth-transition">Shipping Policy</a></li>
+                <li><Link href="/privacy" className="text-muted-foreground hover:text-primary smooth-transition">Privacy Policy</Link></li>
+                <li><Link href="/terms" className="text-muted-foreground hover:text-primary smooth-transition">Terms of Service</Link></li>
+                <li><Link href="/return-policy" className="text-muted-foreground hover:text-primary smooth-transition">Return & Refund Policy</Link></li>
+                <li><Link href="/shipping" className="text-muted-foreground hover:text-primary smooth-transition">Shipping Policy</Link></li>
               </ul>
             </div>
             
