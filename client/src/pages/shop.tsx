@@ -10,14 +10,18 @@ import type { Product, Category } from "@/lib/types";
 
 export default function Shop() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [sortBy, setSortBy] = useState("name");
 
-  const { data: products = [], isLoading: productsLoading } = useQuery({
-    queryKey: ["/api/products", searchQuery ? { search: searchQuery } : selectedCategory ? { category: selectedCategory } : {}],
+  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
+    queryKey: searchQuery 
+      ? [`/api/products?search=${encodeURIComponent(searchQuery)}`]
+      : selectedCategory && selectedCategory !== "all"
+        ? [`/api/products?category=${encodeURIComponent(selectedCategory)}`]
+        : ["/api/products"],
   });
 
-  const { data: categories = [] } = useQuery({
+  const { data: categories = [] } = useQuery<Category[]>({
     queryKey: ["/api/categories"],
   });
 
@@ -73,7 +77,7 @@ export default function Shop() {
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
+                  <SelectItem value="all">All Categories</SelectItem>
                   {categories.map((category: Category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
