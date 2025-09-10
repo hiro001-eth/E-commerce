@@ -12,6 +12,8 @@ import {
   insertCouponSchema,
   locationFilterSchema,
   insertVendorSchema,
+  vendorLocationSchema,
+  vendorDeliverySchema,
   type User 
 } from "@shared/schema";
 import { z } from "zod";
@@ -270,16 +272,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Vendor not found" });
       }
 
-      const { street, city, state, zipCode, country, latitude, longitude } = req.body;
-
+      // Validate request body
+      const validatedData = vendorLocationSchema.parse(req.body);
+      
       const storeLocation = {
-        street: street || null,
-        city: city || null,
-        state: state || null,
-        zipCode: zipCode || null,
-        country: country || null,
-        latitude: latitude || null,
-        longitude: longitude || null,
+        street: validatedData.street || null,
+        city: validatedData.city,
+        state: validatedData.state,
+        zipCode: validatedData.zipCode,
+        country: validatedData.country || "United States",
+        latitude: validatedData.latitude || null,
+        longitude: validatedData.longitude || null,
       };
 
       const updatedVendor = await storage.updateVendor(vendor.id, { storeLocation });
@@ -289,6 +292,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updatedVendor);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("Location update error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -301,13 +311,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ message: "Vendor not found" });
       }
 
-      const { deliveryAreas, deliveryRadius, deliveryFee, freeDeliveryThreshold } = req.body;
+      // Validate request body
+      const validatedData = vendorDeliverySchema.parse(req.body);
 
       const updates: any = {};
-      if (deliveryAreas !== undefined) updates.deliveryAreas = deliveryAreas;
-      if (deliveryRadius !== undefined) updates.deliveryRadius = deliveryRadius;
-      if (deliveryFee !== undefined) updates.deliveryFee = deliveryFee.toString();
-      if (freeDeliveryThreshold !== undefined) updates.freeDeliveryThreshold = freeDeliveryThreshold.toString();
+      if (validatedData.deliveryAreas !== undefined) updates.deliveryAreas = validatedData.deliveryAreas;
+      if (validatedData.deliveryRadius !== undefined) updates.deliveryRadius = validatedData.deliveryRadius;
+      if (validatedData.deliveryFee !== undefined) updates.deliveryFee = validatedData.deliveryFee.toString();
+      if (validatedData.freeDeliveryThreshold !== undefined) updates.freeDeliveryThreshold = validatedData.freeDeliveryThreshold.toString();
 
       const updatedVendor = await storage.updateVendor(vendor.id, updates);
       if (!updatedVendor) {
@@ -316,6 +327,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json(updatedVendor);
     } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("Delivery settings update error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
@@ -369,8 +387,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json(products);
+      // Enhance products with vendor delivery information
+      const productsWithVendorInfo = await Promise.all(
+        products.map(async (product) => {
+          const vendor = await storage.getVendor(product.vendorId);
+          if (vendor) {
+            return {
+              ...product,
+              vendor: {
+                storeName: vendor.storeName,
+                deliveryFee: vendor.deliveryFee,
+                freeDeliveryThreshold: vendor.freeDeliveryThreshold,
+                deliveryRadius: vendor.deliveryRadius,
+                deliveryAreas: vendor.deliveryAreas || [],
+              }
+            };
+          }
+          return product;
+        })
+      );
+
+      res.json(productsWithVendorInfo);
     } catch (error) {
+      console.error("Products API error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

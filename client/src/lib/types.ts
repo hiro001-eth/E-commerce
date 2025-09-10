@@ -34,6 +34,13 @@ export interface Product {
   reviewCount: number;
   createdAt: string;
   updatedAt: string;
+  vendor?: {
+    storeName: string;
+    deliveryFee: string;
+    freeDeliveryThreshold: string;
+    deliveryRadius: number;
+    deliveryAreas: string[];
+  };
 }
 
 export interface CartItem {
@@ -74,6 +81,19 @@ export interface Vendor {
   storeName: string;
   storeDescription?: string;
   businessLicense?: string;
+  storeLocation?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+  };
+  deliveryAreas: string[];
+  deliveryRadius: number;
+  deliveryFee: string;
+  freeDeliveryThreshold: string;
   isApproved: boolean;
   rating: string;
   totalSales: string;

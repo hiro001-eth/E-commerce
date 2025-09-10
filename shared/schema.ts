@@ -241,3 +241,24 @@ export const userLocationSchema = z.object({
 
 export type LocationFilter = z.infer<typeof locationFilterSchema>;
 export type UserLocation = z.infer<typeof userLocationSchema>;
+
+// Vendor location and delivery validation schemas
+export const vendorLocationSchema = z.object({
+  street: z.string().optional(),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  zipCode: z.string().min(1, "ZIP code is required"),
+  country: z.string().default("United States"),
+  latitude: z.number().min(-90).max(90).optional(),
+  longitude: z.number().min(-180).max(180).optional(),
+});
+
+export const vendorDeliverySchema = z.object({
+  deliveryAreas: z.array(z.string().min(1)).optional(),
+  deliveryRadius: z.number().min(1).max(100).optional(),
+  deliveryFee: z.number().min(0).optional(),
+  freeDeliveryThreshold: z.number().min(0).optional(),
+});
+
+export type VendorLocation = z.infer<typeof vendorLocationSchema>;
+export type VendorDelivery = z.infer<typeof vendorDeliverySchema>;

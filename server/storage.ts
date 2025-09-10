@@ -19,6 +19,255 @@ import {
 import { randomUUID } from "crypto";
 import { PasswordCrypto } from "./crypto";
 
+// Geographic utility functions
+interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
+
+// Basic coordinate lookup for major US cities
+const CITY_COORDINATES: Record<string, Coordinates> = {
+  'new york': { latitude: 40.7128, longitude: -74.0060 },
+  'los angeles': { latitude: 34.0522, longitude: -118.2437 },
+  'chicago': { latitude: 41.8781, longitude: -87.6298 },
+  'houston': { latitude: 29.7604, longitude: -95.3698 },
+  'phoenix': { latitude: 33.4484, longitude: -112.0740 },
+  'philadelphia': { latitude: 39.9526, longitude: -75.1652 },
+  'san antonio': { latitude: 29.4241, longitude: -98.4936 },
+  'san diego': { latitude: 32.7157, longitude: -117.1611 },
+  'dallas': { latitude: 32.7767, longitude: -96.7970 },
+  'san jose': { latitude: 37.3382, longitude: -121.8863 },
+  'austin': { latitude: 30.2672, longitude: -97.7431 },
+  'jacksonville': { latitude: 30.3322, longitude: -81.6557 },
+  'san francisco': { latitude: 37.7749, longitude: -122.4194 },
+  'columbus': { latitude: 39.9612, longitude: -82.9988 },
+  'charlotte': { latitude: 35.2271, longitude: -80.8431 },
+  'fort worth': { latitude: 32.7555, longitude: -97.3308 },
+  'indianapolis': { latitude: 39.7684, longitude: -86.1581 },
+  'seattle': { latitude: 47.6062, longitude: -122.3321 },
+  'denver': { latitude: 39.7392, longitude: -104.9903 },
+  'boston': { latitude: 42.3601, longitude: -71.0589 },
+  'el paso': { latitude: 31.7619, longitude: -106.4850 },
+  'detroit': { latitude: 42.3314, longitude: -83.0458 },
+  'nashville': { latitude: 36.1627, longitude: -86.7816 },
+  'memphis': { latitude: 35.1495, longitude: -90.0490 },
+  'portland': { latitude: 45.5152, longitude: -122.6784 },
+  'oklahoma city': { latitude: 35.4676, longitude: -97.5164 },
+  'las vegas': { latitude: 36.1699, longitude: -115.1398 },
+  'louisville': { latitude: 38.2527, longitude: -85.7585 },
+  'baltimore': { latitude: 39.2904, longitude: -76.6122 },
+  'milwaukee': { latitude: 43.0389, longitude: -87.9065 },
+  'albuquerque': { latitude: 35.0844, longitude: -106.6504 },
+  'tucson': { latitude: 32.2226, longitude: -110.9747 },
+  'fresno': { latitude: 36.7378, longitude: -119.7871 },
+  'sacramento': { latitude: 38.5816, longitude: -121.4944 },
+  'mesa': { latitude: 33.4152, longitude: -111.8315 },
+  'kansas city': { latitude: 39.0997, longitude: -94.5786 },
+  'atlanta': { latitude: 33.7490, longitude: -84.3880 },
+  'colorado springs': { latitude: 38.8339, longitude: -104.8214 },
+  'raleigh': { latitude: 35.7796, longitude: -78.6382 },
+  'omaha': { latitude: 41.2565, longitude: -95.9345 },
+  'miami': { latitude: 25.7617, longitude: -80.1918 },
+  'virginia beach': { latitude: 36.8529, longitude: -76.0818 },
+  'oakland': { latitude: 37.8044, longitude: -122.2712 },
+  'tulsa': { latitude: 36.1540, longitude: -95.9928 },
+  'minneapolis': { latitude: 44.9778, longitude: -93.2650 },
+  'cleveland': { latitude: 41.4993, longitude: -81.6944 },
+  'wichita': { latitude: 37.6872, longitude: -97.3301 },
+  'arlington': { latitude: 32.7357, longitude: -97.1081 },
+  'new orleans': { latitude: 29.9511, longitude: -90.0715 },
+  'bakersfield': { latitude: 35.3733, longitude: -119.0187 },
+  'tampa': { latitude: 27.9506, longitude: -82.4572 },
+  'honolulu': { latitude: 21.3099, longitude: -157.8581 },
+  'anaheim': { latitude: 33.8366, longitude: -117.9143 },
+  'aurora': { latitude: 39.7294, longitude: -104.8319 },
+  'santa ana': { latitude: 33.7455, longitude: -117.8677 },
+  'st. louis': { latitude: 38.6270, longitude: -90.1994 },
+  'riverside': { latitude: 33.9533, longitude: -117.3962 },
+  'corpus christi': { latitude: 27.8006, longitude: -97.3964 },
+  'lexington': { latitude: 38.0406, longitude: -84.5037 },
+  'pittsburgh': { latitude: 40.4406, longitude: -79.9959 },
+  'anchorage': { latitude: 61.2181, longitude: -149.9003 },
+  'stockton': { latitude: 37.9577, longitude: -121.2908 },
+  'cincinnati': { latitude: 39.1031, longitude: -84.5120 },
+  'st. paul': { latitude: 44.9537, longitude: -93.0900 },
+  'toledo': { latitude: 41.6528, longitude: -83.5379 },
+  'greensboro': { latitude: 36.0726, longitude: -79.7920 },
+  'newark': { latitude: 40.7357, longitude: -74.1724 },
+  'plano': { latitude: 33.0198, longitude: -96.6989 },
+  'henderson': { latitude: 36.0395, longitude: -114.9817 },
+  'lincoln': { latitude: 40.8136, longitude: -96.7026 },
+  'buffalo': { latitude: 42.8864, longitude: -78.8784 },
+  'jersey city': { latitude: 40.7178, longitude: -74.0431 },
+  'chula vista': { latitude: 32.6401, longitude: -117.0842 },
+  'fort wayne': { latitude: 41.0793, longitude: -85.1394 },
+  'orlando': { latitude: 28.5383, longitude: -81.3792 },
+  'st. petersburg': { latitude: 27.7676, longitude: -82.6403 },
+  'chandler': { latitude: 33.3062, longitude: -111.8413 },
+  'laredo': { latitude: 27.5306, longitude: -99.4803 },
+  'norfolk': { latitude: 36.8468, longitude: -76.2852 },
+  'durham': { latitude: 35.9940, longitude: -78.8986 },
+  'madison': { latitude: 43.0731, longitude: -89.4012 },
+  'lubbock': { latitude: 33.5779, longitude: -101.8552 },
+  'irvine': { latitude: 33.6846, longitude: -117.8265 },
+  'winston-salem': { latitude: 36.0999, longitude: -80.2442 },
+  'glendale': { latitude: 33.5387, longitude: -112.1860 },
+  'garland': { latitude: 32.9126, longitude: -96.6389 },
+  'hialeah': { latitude: 25.8576, longitude: -80.2781 },
+  'reno': { latitude: 39.5296, longitude: -119.8138 },
+  'chesapeake': { latitude: 36.8190, longitude: -76.2749 },
+  'gilbert': { latitude: 33.3528, longitude: -111.7890 },
+  'baton rouge': { latitude: 30.4515, longitude: -91.1871 },
+  'irving': { latitude: 32.8140, longitude: -96.9489 },
+  'scottsdale': { latitude: 33.4942, longitude: -111.9261 },
+  'north las vegas': { latitude: 36.1989, longitude: -115.1175 },
+  'fremont': { latitude: 37.5485, longitude: -121.9886 },
+  'boise': { latitude: 43.6150, longitude: -116.2023 },
+  'richmond': { latitude: 37.5407, longitude: -77.4360 },
+  'san bernardino': { latitude: 34.1083, longitude: -117.2898 },
+  'birmingham': { latitude: 33.5207, longitude: -86.8025 },
+  'spokane': { latitude: 47.6587, longitude: -117.4260 },
+  'rochester': { latitude: 43.1566, longitude: -77.6088 },
+  'des moines': { latitude: 41.5868, longitude: -93.6250 },
+  'modesto': { latitude: 37.6391, longitude: -120.9969 },
+  'fayetteville': { latitude: 36.0626, longitude: -94.1574 },
+  'tacoma': { latitude: 47.2529, longitude: -122.4443 },
+  'oxnard': { latitude: 34.1975, longitude: -119.1771 },
+  'fontana': { latitude: 34.0922, longitude: -117.4350 },
+  'columbus': { latitude: 32.4609, longitude: -84.9877 },
+  'montgomery': { latitude: 32.3668, longitude: -86.3000 },
+  'moreno valley': { latitude: 33.9425, longitude: -117.2297 },
+  'shreveport': { latitude: 32.5252, longitude: -93.7502 },
+  'aurora': { latitude: 41.7606, longitude: -88.3201 },
+  'yonkers': { latitude: 40.9312, longitude: -73.8988 },
+  'akron': { latitude: 41.0814, longitude: -81.5190 },
+  'huntington beach': { latitude: 33.6603, longitude: -117.9992 },
+  'little rock': { latitude: 34.7465, longitude: -92.2896 },
+  'augusta': { latitude: 33.4735, longitude: -82.0105 },
+  'amarillo': { latitude: 35.2220, longitude: -101.8313 },
+  'glendale': { latitude: 34.1425, longitude: -118.2551 },
+  'mobile': { latitude: 30.6954, longitude: -88.0399 },
+  'grand rapids': { latitude: 42.9634, longitude: -85.6681 },
+  'salt lake city': { latitude: 40.7608, longitude: -111.8910 },
+  'tallahassee': { latitude: 30.4518, longitude: -84.2807 },
+  'huntsville': { latitude: 34.7304, longitude: -86.5861 },
+  'grand prairie': { latitude: 32.7460, longitude: -96.9978 },
+  'knoxville': { latitude: 35.9606, longitude: -83.9207 },
+  'worcester': { latitude: 42.2626, longitude: -71.8023 },
+  'newport news': { latitude: 37.0871, longitude: -76.4730 },
+  'brownsville': { latitude: 25.9018, longitude: -97.4975 },
+  'overland park': { latitude: 38.9822, longitude: -94.6708 },
+  'santa clarita': { latitude: 34.3917, longitude: -118.5426 },
+  'providence': { latitude: 41.8240, longitude: -71.4128 },
+  'garden grove': { latitude: 33.7739, longitude: -117.9415 },
+  'chattanooga': { latitude: 35.0456, longitude: -85.3097 },
+  'oceanside': { latitude: 33.1959, longitude: -117.3795 },
+  'jackson': { latitude: 32.2988, longitude: -90.1848 },
+  'fort lauderdale': { latitude: 26.1224, longitude: -80.1373 },
+  'santa rosa': { latitude: 38.4404, longitude: -122.7144 },
+  'rancho cucamonga': { latitude: 34.1064, longitude: -117.5931 },
+  'port st. lucie': { latitude: 27.2939, longitude: -80.3503 },
+  'tempe': { latitude: 33.4255, longitude: -111.9400 },
+  'ontario': { latitude: 34.0633, longitude: -117.6509 },
+  'vancouver': { latitude: 45.6387, longitude: -122.6615 },
+  'cape coral': { latitude: 26.5629, longitude: -81.9495 },
+  'sioux falls': { latitude: 43.5446, longitude: -96.7311 },
+  'springfield': { latitude: 39.7817, longitude: -89.6501 },
+  'peoria': { latitude: 40.6936, longitude: -89.5890 },
+  'pembroke pines': { latitude: 26.0070, longitude: -80.2962 },
+  'elk grove': { latitude: 38.4088, longitude: -121.3716 },
+  'rockford': { latitude: 42.2711, longitude: -89.0940 },
+  'salem': { latitude: 44.9429, longitude: -123.0351 },
+  'lancaster': { latitude: 34.6868, longitude: -118.1542 },
+  'corona': { latitude: 33.8753, longitude: -117.5664 },
+  'eugene': { latitude: 44.0521, longitude: -123.0868 },
+  'palmdale': { latitude: 34.5794, longitude: -118.1165 },
+  'salinas': { latitude: 36.6777, longitude: -121.6555 },
+  'springfield': { latitude: 37.2153, longitude: -93.2982 },
+  'pasadena': { latitude: 34.1478, longitude: -118.1445 },
+  'fort collins': { latitude: 40.5853, longitude: -105.0844 },
+  'hayward': { latitude: 37.6688, longitude: -122.0808 },
+  'pomona': { latitude: 34.0552, longitude: -117.7500 },
+  'cary': { latitude: 35.7915, longitude: -78.7811 },
+  'rockville': { latitude: 39.0840, longitude: -77.1528 },
+  'alexandria': { latitude: 38.8048, longitude: -77.0469 },
+  'escondido': { latitude: 33.1192, longitude: -117.0864 },
+  'mckinney': { latitude: 33.1972, longitude: -96.6155 },
+  'kansas city': { latitude: 39.1142, longitude: -94.6275 },
+  'joliet': { latitude: 41.5250, longitude: -88.0817 },
+  'sunnyvale': { latitude: 37.3688, longitude: -122.0363 },
+  'torrance': { latitude: 33.8358, longitude: -118.3407 },
+  'bridgeport': { latitude: 41.1865, longitude: -73.1952 },
+  'lakewood': { latitude: 39.7047, longitude: -105.0814 },
+  'hollywood': { latitude: 26.0112, longitude: -80.1494 },
+  'paterson': { latitude: 40.9168, longitude: -74.1718 },
+  'naperville': { latitude: 41.7508, longitude: -88.1535 },
+  'syracuse': { latitude: 43.0481, longitude: -76.1474 },
+  'mesquite': { latitude: 32.7668, longitude: -96.5991 },
+  'dayton': { latitude: 39.7589, longitude: -84.1916 },
+  'savannah': { latitude: 32.0835, longitude: -81.0998 },
+  'clarksville': { latitude: 36.5298, longitude: -87.3595 },
+  'orange': { latitude: 33.7879, longitude: -117.8531 },
+  'pasadena': { latitude: 29.6911, longitude: -95.2091 },
+  'fullerton': { latitude: 33.8703, longitude: -117.9242 },
+  'killeen': { latitude: 31.1171, longitude: -97.7278 },
+  'frisco': { latitude: 33.1507, longitude: -96.8236 },
+  'hampton': { latitude: 37.0299, longitude: -76.3452 },
+  'mcorlando': { latitude: 28.5383, longitude: -81.3792 }
+};
+
+/**
+ * Calculate the distance between two points using the Haversine formula
+ * @param lat1 - Latitude of first point
+ * @param lon1 - Longitude of first point
+ * @param lat2 - Latitude of second point
+ * @param lon2 - Longitude of second point
+ * @returns Distance in kilometers
+ */
+function calculateHaversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  const distance = R * c;
+  return distance;
+}
+
+/**
+ * Get coordinates for a location string, checking our city database first
+ * @param locationString - Location string in format "city, state" or just "city"
+ * @returns Coordinates if found, null otherwise
+ */
+function getCoordinatesForLocation(locationString: string): Coordinates | null {
+  if (!locationString) return null;
+  
+  const cleanLocation = locationString.toLowerCase().trim();
+  
+  // Try to find exact match first
+  if (CITY_COORDINATES[cleanLocation]) {
+    return CITY_COORDINATES[cleanLocation];
+  }
+  
+  // Try to extract city name from various formats
+  const cityPart = cleanLocation.split(',')[0].trim();
+  if (CITY_COORDINATES[cityPart]) {
+    return CITY_COORDINATES[cityPart];
+  }
+  
+  // Try partial matching for major cities
+  for (const [city, coords] of Object.entries(CITY_COORDINATES)) {
+    if (city.includes(cityPart) || cityPart.includes(city)) {
+      return coords;
+    }
+  }
+  
+  return null;
+}
+
 export interface IStorage {
   // User methods
   getUser(id: string): Promise<User | undefined>;
@@ -466,7 +715,11 @@ export class MemStorage implements IStorage {
 
   // Location-based filtering methods
   async getVendorsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Vendor[]> {
-    const { city, state, zipCode } = filter;
+    const { city, state, zipCode, radius = 25 } = filter;
+    
+    // Get coordinates for the search location
+    const searchLocationString = [city, state, zipCode].filter(Boolean).join(', ');
+    const searchCoords = getCoordinatesForLocation(searchLocationString);
     
     return Array.from(this.vendors.values()).filter(vendor => {
       if (!vendor.isApproved) return false;
@@ -478,7 +731,28 @@ export class MemStorage implements IStorage {
       
       if (!hasStoreLocation && !hasDeliveryAreas) return false;
 
-      // Check delivery areas for direct match
+      // Priority 1: Geographic distance calculation if both locations have coordinates
+      if (searchCoords && hasStoreLocation && vendor.storeLocation!.latitude && vendor.storeLocation!.longitude) {
+        const vendorCoords = {
+          latitude: vendor.storeLocation!.latitude,
+          longitude: vendor.storeLocation!.longitude
+        };
+        
+        const distance = calculateHaversineDistance(
+          searchCoords.latitude, searchCoords.longitude,
+          vendorCoords.latitude, vendorCoords.longitude
+        );
+        
+        // Check if within vendor's delivery radius
+        const vendorRadius = vendor.deliveryRadius || 10; // Default 10km if not set
+        const effectiveRadius = Math.min(radius, vendorRadius); // Use the smaller radius
+        
+        if (distance <= effectiveRadius) {
+          return true;
+        }
+      }
+
+      // Priority 2: Check delivery areas for direct text match
       if (hasDeliveryAreas && (city || state || zipCode)) {
         const searchLocation = [city, state, zipCode].filter(Boolean).join(' ').toLowerCase();
         const matchesDeliveryAreas = vendor.deliveryAreas!.some(area => 
@@ -488,9 +762,32 @@ export class MemStorage implements IStorage {
         if (matchesDeliveryAreas) return true;
       }
 
-      // Check store location for match
+      // Priority 3: Fallback to text-based store location matching
       if (hasStoreLocation) {
         const storeLocation = vendor.storeLocation!;
+        
+        // If vendor has no coordinates, try coordinate lookup for their location
+        if (!storeLocation.latitude || !storeLocation.longitude) {
+          const vendorLocationString = [storeLocation.city, storeLocation.state].filter(Boolean).join(', ');
+          const vendorCoords = getCoordinatesForLocation(vendorLocationString);
+          
+          // If we can find coordinates for vendor location, do distance calculation
+          if (searchCoords && vendorCoords) {
+            const distance = calculateHaversineDistance(
+              searchCoords.latitude, searchCoords.longitude,
+              vendorCoords.latitude, vendorCoords.longitude
+            );
+            
+            const vendorRadius = vendor.deliveryRadius || 10;
+            const effectiveRadius = Math.min(radius, vendorRadius);
+            
+            if (distance <= effectiveRadius) {
+              return true;
+            }
+          }
+        }
+        
+        // Text-based matching as final fallback
         if (city && storeLocation.city && 
             storeLocation.city.toLowerCase().includes(city.toLowerCase())) {
           return true;

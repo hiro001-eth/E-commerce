@@ -1,4 +1,4 @@
-import { Star, ShoppingCart } from "lucide-react";
+import { Star, ShoppingCart, Truck, MapPin } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -104,6 +104,36 @@ export default function ProductCard({ product }: ProductCardProps) {
             </span>
           </div>
         </div>
+        
+        {/* Delivery Information */}
+        {product.vendor && (
+          <div className="mb-3 p-2 bg-muted/50 rounded-md" data-testid={`delivery-info-${product.id}`}>
+            <div className="flex items-center gap-1 mb-1">
+              <Truck className="w-3 h-3 text-muted-foreground" />
+              <span className="text-xs font-medium text-muted-foreground">Delivery by {product.vendor.storeName}</span>
+            </div>
+            <div className="text-xs text-muted-foreground space-y-1">
+              <div className="flex items-center justify-between">
+                <span>Delivery fee:</span>
+                <span className="font-medium" data-testid={`delivery-fee-${product.id}`}>
+                  {parseFloat(product.vendor.deliveryFee) === 0 ? "Free" : `$${parseFloat(product.vendor.deliveryFee).toFixed(2)}`}
+                </span>
+              </div>
+              {parseFloat(product.vendor.freeDeliveryThreshold) > 0 && parseFloat(product.vendor.deliveryFee) > 0 && (
+                <div className="flex items-center justify-between">
+                  <span>Free delivery over:</span>
+                  <span className="font-medium text-green-600" data-testid={`free-delivery-threshold-${product.id}`}>
+                    ${parseFloat(product.vendor.freeDeliveryThreshold).toFixed(2)}
+                  </span>
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <MapPin className="w-3 h-3" />
+                <span>Delivers within {product.vendor.deliveryRadius}km</span>
+              </div>
+            </div>
+          </div>
+        )}
         
         <Button
           onClick={handleAddToCart}
