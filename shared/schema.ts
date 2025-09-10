@@ -169,6 +169,10 @@ export const insertCouponSchema = createInsertSchema(coupons).omit({
   usedCount: true,
 });
 
+export const insertCategorySchema = createInsertSchema(categories).omit({
+  id: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -185,6 +189,7 @@ export type InsertReview = z.infer<typeof insertReviewSchema>;
 export type Coupon = typeof coupons.$inferSelect;
 export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Category = typeof categories.$inferSelect;
+export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
 
 // Auth schemas

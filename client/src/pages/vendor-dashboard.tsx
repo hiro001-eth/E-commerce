@@ -13,8 +13,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Store, Package, BarChart3, Settings, Plus, Edit, Trash2, DollarSign } from "lucide-react";
-import type { User as UserType, Product, Order, Vendor, Category } from "@/lib/types";
+import { Store, Package, BarChart3, Settings, Plus, Edit, Trash2, DollarSign, Upload, X, Eye, EyeOff } from "lucide-react";
+import type { User as UserType, Product, Order, Vendor, Category } from "@shared/schema";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -24,6 +24,8 @@ const productSchema = z.object({
   stock: z.number().min(0, "Stock cannot be negative"),
   sku: z.string().min(1, "SKU is required"),
   categoryId: z.string().optional(),
+  images: z.array(z.string()).optional(),
+  isActive: z.boolean(),
   allowsCoupons: z.boolean(),
 });
 
@@ -40,7 +42,7 @@ export default function VendorDashboard() {
   });
 
   const { data: vendor } = useQuery<Vendor>({
-    queryKey: ["/api/vendor"],
+    queryKey: ["/api/vendors/me"],
     queryFn: async () => {
       const response = await fetch("/api/vendors/me", { credentials: "include" });
       if (!response.ok) throw new Error("Failed to fetch vendor data");
@@ -70,6 +72,9 @@ export default function VendorDashboard() {
 
   const user = authData?.user as UserType;
 
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [imageInput, setImageInput] = useState("");
+
   const productForm = useForm<ProductForm>({
     resolver: zodResolver(productSchema),
     defaultValues: {
@@ -80,6 +85,8 @@ export default function VendorDashboard() {
       stock: 0,
       sku: "",
       categoryId: "",
+      images: [],
+      isActive: true,
       allowsCoupons: true,
     },
   });
@@ -89,7 +96,8 @@ export default function VendorDashboard() {
       apiRequest("POST", "/api/products", { 
         ...data, 
         stock: Number(data.stock),
-        categoryId: data.categoryId === "no-category" ? null : data.categoryId
+        categoryId: data.categoryId === "no-category" ? null : data.categoryId,
+        images: imageUrls
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products/vendor"] });
@@ -107,7 +115,8 @@ export default function VendorDashboard() {
       apiRequest("PUT", `/api/products/${id}`, { 
         ...data, 
         stock: Number(data.stock),
-        categoryId: data.categoryId === "no-category" ? null : data.categoryId
+        categoryId: data.categoryId === "no-category" ? null : data.categoryId,
+        images: imageUrls
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/products/vendor"] });
@@ -147,16 +156,33 @@ export default function VendorDashboard() {
     pendingOrders: orders.filter((order: Order) => order.status === "pending").length,
   };
 
+  const addImage = () => {
+    if (imageInput.trim() && !imageUrls.includes(imageInput.trim())) {
+      const newImages = [...imageUrls, imageInput.trim()];
+      setImageUrls(newImages);
+      productForm.setValue("images", newImages);
+      setImageInput("");
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = imageUrls.filter((_, i) => i !== index);
+    setImageUrls(newImages);
+    productForm.setValue("images", newImages);
+  };
+
   const onSubmitProduct = (data: ProductForm) => {
+    const submitData = { ...data, images: imageUrls };
     if (editingProduct) {
-      updateProductMutation.mutate({ id: editingProduct.id, data });
+      updateProductMutation.mutate({ id: editingProduct.id, data: submitData });
     } else {
-      createProductMutation.mutate(data);
+      createProductMutation.mutate(submitData);
     }
   };
 
   const handleEditProduct = (product: Product) => {
     setEditingProduct(product);
+    setImageUrls(product.images || []);
     productForm.reset({
       name: product.name,
       description: product.description,
@@ -165,6 +191,8 @@ export default function VendorDashboard() {
       stock: product.stock,
       sku: product.sku,
       categoryId: product.categoryId || "",
+      images: product.images || [],
+      isActive: product.isActive,
       allowsCoupons: product.allowsCoupons,
     });
     setActiveTab("add-product");
@@ -617,14 +645,84 @@ export default function VendorDashboard() {
                       </Select>
                     </div>
 
-                    <div className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        id="allowsCoupons"
-                        {...productForm.register("allowsCoupons")}
-                        data-testid="checkbox-allows-coupons"
-                      />
-                      <Label htmlFor="allowsCoupons">Allow coupon discounts</Label>
+                    {/* Image Management */}
+                    <div className="space-y-4">
+                      <Label>Product Images</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          placeholder="Enter image URL"
+                          value={imageInput}
+                          onChange={(e) => setImageInput(e.target.value)}
+                          data-testid="input-image-url"
+                        />
+                        <Button
+                          type="button"
+                          onClick={addImage}
+                          size="sm"
+                          data-testid="button-add-image"
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          Add
+                        </Button>
+                      </div>
+                      {imageUrls.length > 0 && (
+                        <div className="grid grid-cols-2 gap-4">
+                          {imageUrls.map((url, index) => (
+                            <div key={index} className="relative border rounded-lg p-2">
+                              <img
+                                src={url}
+                                alt={`Product image ${index + 1}`}
+                                className="w-full h-24 object-cover rounded"
+                                onError={(e) => {
+                                  (e.target as HTMLImageElement).src = "https://via.placeholder.com/150x100?text=Invalid+Image";
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                size="sm"
+                                className="absolute top-1 right-1"
+                                onClick={() => removeImage(index)}
+                                data-testid={`button-remove-image-${index}`}
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                              <p className="text-xs text-muted-foreground mt-1 truncate" title={url}>
+                                {url}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Availability and Settings */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="isActive"
+                          {...productForm.register("isActive")}
+                          data-testid="checkbox-is-active"
+                        />
+                        <Label htmlFor="isActive" className="flex items-center gap-2">
+                          {productForm.watch("isActive") ? (
+                            <Eye className="w-4 h-4 text-green-600" />
+                          ) : (
+                            <EyeOff className="w-4 h-4 text-red-600" />
+                          )}
+                          {productForm.watch("isActive") ? "Active (Visible)" : "Inactive (Hidden)"}
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          id="allowsCoupons"
+                          {...productForm.register("allowsCoupons")}
+                          data-testid="checkbox-allows-coupons"
+                        />
+                        <Label htmlFor="allowsCoupons">Allow coupon discounts</Label>
+                      </div>
                     </div>
 
                     <div className="flex gap-4">
