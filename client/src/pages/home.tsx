@@ -9,7 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import ProductCard from "@/components/product-card";
 import RecentReviews from "@/components/recent-reviews";
-import type { Product, User as UserType, LocationFilter } from "@shared/schema";
+import type { ProductDTO as Product, UserDTO as UserType, LocationFilter } from "@shared/schema";
 
 export default function Home() {
   const [locationFilter, setLocationFilter] = useState<LocationFilter>({
@@ -210,7 +210,7 @@ export default function Home() {
 
           {featuredProducts.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {featuredProducts.map((product: Product) => (
+              {featuredProducts.map((product: any) => (
                 <ProductCard key={product.id} product={product} />
               ))}
             </div>

@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import ProductCard from "@/components/product-card";
 import { Search, Filter } from "lucide-react";
-import type { Product, Category } from "@/lib/types";
+import type { ProductDTO as Product, CategoryDTO as Category } from "@shared/schema";
 
 export default function Shop() {
   const [searchQuery, setSearchQuery] = useState("");

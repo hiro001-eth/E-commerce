@@ -9,7 +9,7 @@ import { User, ShoppingBag, Heart, Settings, DollarSign } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { User as UserType, Order } from "@/lib/types";
+import type { UserDTO as UserType, OrderDTO as Order } from "@shared/schema";
 
 export default function UserDashboard() {
   const [isEditing, setIsEditing] = useState(false);

@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import type { CartItem } from "@/lib/types";
+import type { CartItemDTO as CartItem } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 
 interface CartSidebarProps {
@@ -16,7 +16,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: cartItems = [], isLoading } = useQuery({
+  const { data: cartItems = [], isLoading } = useQuery<CartItem[]>({
     queryKey: ["/api/cart"],
   });
 
@@ -173,7 +173,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
           </div>
 
           {/* Cart Footer */}
-          {cartItems.length > 0 && (
+          {(cartItems as CartItem[]).length > 0 && (
             <div className="border-t border-border pt-4 mt-4">
               <div className="flex justify-between items-center mb-4">
                 <span className="font-semibold text-foreground">Total:</span>

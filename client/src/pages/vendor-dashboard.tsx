@@ -490,7 +490,7 @@ export default function VendorDashboard() {
                               Order #{order.id.slice(0, 8)}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              {new Date(order.createdAt).toLocaleDateString()}
+                              {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'Unknown date'}
                             </p>
                             <p className="text-sm text-muted-foreground">
                               {order.deliveryAddress.firstName} {order.deliveryAddress.lastName}

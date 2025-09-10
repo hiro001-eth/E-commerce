@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import session from "express-session";
 import MemoryStore from "memorystore";
@@ -14,12 +14,159 @@ import {
   insertVendorSchema,
   vendorLocationSchema,
   vendorDeliverySchema,
-  type User 
+  type User,
+  type Product,
+  type Vendor,
+  type Order,
+  type Cart,
+  type Review,
+  type Coupon,
+  type Category,
+  type UserDTO,
+  type ProductDTO,
+  type VendorDTO,
+  type OrderDTO,
+  type CartItemDTO,
+  type ReviewDTO,
+  type CouponDTO,
+  type CategoryDTO
 } from "@shared/schema";
 import { z } from "zod";
 import { PasswordCrypto, DataCrypto, SessionCrypto, InputSecurity, SecurityAudit } from "./crypto";
 
 const MemStore = MemoryStore(session);
+
+// Entity to DTO mapping functions
+function mapUserToDTO(user: User): UserDTO {
+  return {
+    id: user.id,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    address: user.address,
+    isActive: user.isActive,
+    createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+function mapVendorToDTO(vendor: Vendor): VendorDTO {
+  return {
+    id: vendor.id,
+    userId: vendor.userId,
+    storeName: vendor.storeName,
+    storeDescription: vendor.storeDescription,
+    businessLicense: vendor.businessLicense,
+    storeLocation: vendor.storeLocation,
+    deliveryAreas: vendor.deliveryAreas ?? [],
+    deliveryRadius: vendor.deliveryRadius ?? 10,
+    deliveryFee: vendor.deliveryFee ?? "0",
+    freeDeliveryThreshold: vendor.freeDeliveryThreshold ?? "50",
+    isApproved: vendor.isApproved,
+    rating: vendor.rating ?? "0",
+    totalSales: vendor.totalSales ?? "0",
+    createdAt: vendor.createdAt?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+function mapProductToDTO(product: Product, vendor?: Vendor): ProductDTO {
+  return {
+    id: product.id,
+    vendorId: product.vendorId,
+    categoryId: product.categoryId,
+    name: product.name,
+    description: product.description,
+    price: product.price,
+    discountPrice: product.discountPrice,
+    stock: product.stock,
+    images: product.images || [],
+    sku: product.sku,
+    availableInAreas: product.availableInAreas || [],
+    requiresShipping: product.requiresShipping,
+    isActive: product.isActive,
+    allowsCoupons: product.allowsCoupons,
+    rating: product.rating || "0",
+    reviewCount: product.reviewCount || 0,
+    createdAt: product.createdAt?.toISOString() ?? new Date().toISOString(),
+    updatedAt: product.updatedAt?.toISOString() ?? new Date().toISOString(),
+    ...(vendor && {
+      vendor: {
+        storeName: vendor.storeName,
+        deliveryFee: vendor.deliveryFee ?? "0",
+        freeDeliveryThreshold: vendor.freeDeliveryThreshold ?? "50",
+        deliveryRadius: vendor.deliveryRadius ?? 10,
+        deliveryAreas: vendor.deliveryAreas || [],
+      }
+    })
+  };
+}
+
+function mapOrderToDTO(order: Order): OrderDTO {
+  return {
+    id: order.id,
+    userId: order.userId,
+    vendorId: order.vendorId,
+    total: order.total,
+    status: order.status,
+    paymentMethod: order.paymentMethod,
+    deliveryAddress: order.deliveryAddress,
+    couponCode: order.couponCode,
+    discount: order.discount ?? "0",
+    createdAt: order.createdAt?.toISOString() ?? new Date().toISOString(),
+    updatedAt: order.updatedAt?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+function mapCartToDTO(cart: Cart, product?: Product, vendor?: Vendor): CartItemDTO {
+  return {
+    id: cart.id,
+    userId: cart.userId,
+    productId: cart.productId,
+    quantity: cart.quantity,
+    createdAt: cart.createdAt?.toISOString() ?? new Date().toISOString(),
+    ...(product && { product: mapProductToDTO(product, vendor) })
+  };
+}
+
+function mapReviewToDTO(review: Review): ReviewDTO {
+  return {
+    id: review.id,
+    userId: review.userId,
+    productId: review.productId,
+    vendorId: review.vendorId,
+    rating: review.rating,
+    comment: review.comment,
+    createdAt: review.createdAt?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+function mapCouponToDTO(coupon: Coupon): CouponDTO {
+  return {
+    id: coupon.id,
+    vendorId: coupon.vendorId,
+    code: coupon.code,
+    discountType: coupon.discountType,
+    discountValue: coupon.discountValue,
+    minOrderAmount: coupon.minOrderAmount,
+    maxDiscount: coupon.maxDiscount,
+    expiryDate: coupon.expiryDate?.toISOString() || null,
+    isActive: coupon.isActive,
+    usageLimit: coupon.usageLimit,
+    usedCount: coupon.usedCount ?? 0,
+    createdAt: coupon.createdAt?.toISOString() ?? new Date().toISOString(),
+  };
+}
+
+function mapCategoryToDTO(category: Category): CategoryDTO {
+  return {
+    id: category.id,
+    name: category.name,
+    description: category.description,
+    isActive: category.isActive,
+  };
+}
 
 declare module "express-session" {
   interface SessionData {
@@ -46,14 +193,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   );
 
   // Auth middleware
-  const requireAuth = (req: any, res: any, next: any) => {
+  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
     if (!req.session.user) {
       return res.status(401).json({ message: "Authentication required" });
     }
     next();
   };
 
-  const requireRole = (roles: string[]) => (req: any, res: any, next: any) => {
+  const requireRole = (roles: string[]) => (req: Request, res: Response, next: NextFunction) => {
     if (!req.session.user || !roles.includes(req.session.user.role)) {
       return res.status(403).json({ message: "Insufficient permissions" });
     }
@@ -106,7 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.get('User-Agent')
       });
       
-      res.json({ user: { ...user, password: undefined } });
+      res.json({ user: mapUserToDTO(user) });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -167,7 +314,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         userAgent: req.get('User-Agent')
       });
       
-      res.json({ user: { ...user, password: undefined } });
+      res.json({ user: mapUserToDTO(user) });
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -185,9 +332,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
-  app.get("/api/auth/me", (req, res) => {
+  app.get("/api/auth/me", async (req, res) => {
     if (req.session.user) {
-      res.json({ user: { ...req.session.user, password: undefined } });
+      const fullUser = await storage.getUser(req.session.user.id);
+      if (fullUser) {
+        res.json({ user: mapUserToDTO(fullUser) });
+      } else {
+        res.status(404).json({ message: "User not found" });
+      }
     } else {
       res.status(401).json({ message: "Not authenticated" });
     }
@@ -199,10 +351,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const allowedFields = ['firstName', 'lastName', 'phone'];
       const updates = Object.keys(req.body)
         .filter(key => allowedFields.includes(key))
-        .reduce((obj: any, key) => {
+        .reduce((obj: Record<string, unknown>, key) => {
           obj[key] = req.body[key];
           return obj;
-        }, {});
+        }, {} as Record<string, unknown>);
 
       if (Object.keys(updates).length === 0) {
         return res.status(400).json({ message: "No valid fields to update" });
@@ -216,7 +368,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Update session
       req.session.user = updatedUser;
 
-      res.json({ user: { ...updatedUser, password: undefined } });
+      res.json({ user: mapUserToDTO(updatedUser) });
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -245,7 +397,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isApproved: true, // Automatic activation - no manual approval required
       });
 
-      res.json(vendor);
+      res.json(mapVendorToDTO(vendor));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -258,7 +410,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!vendor) {
         return res.status(404).json({ message: "Vendor not found" });
       }
-      res.json(vendor);
+      res.json(mapVendorToDTO(vendor));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -276,13 +428,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = vendorLocationSchema.parse(req.body);
       
       const storeLocation = {
-        street: validatedData.street || null,
+        street: validatedData.street,
         city: validatedData.city,
         state: validatedData.state,
         zipCode: validatedData.zipCode,
         country: validatedData.country || "United States",
-        latitude: validatedData.latitude || null,
-        longitude: validatedData.longitude || null,
+        latitude: validatedData.latitude,
+        longitude: validatedData.longitude,
       };
 
       const updatedVendor = await storage.updateVendor(vendor.id, { storeLocation });
@@ -290,7 +442,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to update location" });
       }
 
-      res.json(updatedVendor);
+      res.json(mapVendorToDTO(updatedVendor));
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -314,7 +466,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate request body
       const validatedData = vendorDeliverySchema.parse(req.body);
 
-      const updates: any = {};
+      const updates: Partial<{
+        deliveryAreas: string[];
+        deliveryRadius: number;
+        deliveryFee: string;
+        freeDeliveryThreshold: string;
+      }> = {};
       if (validatedData.deliveryAreas !== undefined) updates.deliveryAreas = validatedData.deliveryAreas;
       if (validatedData.deliveryRadius !== undefined) updates.deliveryRadius = validatedData.deliveryRadius;
       if (validatedData.deliveryFee !== undefined) updates.deliveryFee = validatedData.deliveryFee.toString();
@@ -325,7 +482,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ message: "Failed to update delivery settings" });
       }
 
-      res.json(updatedVendor);
+      res.json(mapVendorToDTO(updatedVendor));
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ 
@@ -387,23 +544,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Enhance products with vendor delivery information
+      // Enhance products with vendor delivery information and convert to DTOs
       const productsWithVendorInfo = await Promise.all(
         products.map(async (product) => {
           const vendor = await storage.getVendor(product.vendorId);
-          if (vendor) {
-            return {
-              ...product,
-              vendor: {
-                storeName: vendor.storeName,
-                deliveryFee: vendor.deliveryFee,
-                freeDeliveryThreshold: vendor.freeDeliveryThreshold,
-                deliveryRadius: vendor.deliveryRadius,
-                deliveryAreas: vendor.deliveryAreas || [],
-              }
-            };
-          }
-          return product;
+          return mapProductToDTO(product, vendor || undefined);
         })
       );
 
@@ -420,7 +565,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!product) {
         return res.status(404).json({ message: "Product not found" });
       }
-      res.json(product);
+      const vendor = await storage.getVendor(product.vendorId);
+      res.json(mapProductToDTO(product, vendor || undefined));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -435,7 +581,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const products = await storage.getProductsByVendor(vendor.id);
-      res.json(products);
+      const productDTOs = products.map(product => mapProductToDTO(product));
+      res.json(productDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -454,7 +601,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       const product = await storage.createProduct(data);
-      res.status(201).json(product);
+      res.status(201).json(mapProductToDTO(product));
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -476,7 +623,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const updatedProduct = await storage.updateProduct(req.params.id, req.body);
-      res.json(updatedProduct);
+      if (!updatedProduct) {
+        return res.status(500).json({ message: "Failed to update product" });
+      }
+      const vendorData = await storage.getVendor(updatedProduct.vendorId);
+      res.json(mapProductToDTO(updatedProduct, vendorData || undefined));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -506,11 +657,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const cartItems = await storage.getCartByUser(req.session.user!.id);
       
-      // Fetch product details for each cart item
+      // Fetch product details for each cart item and convert to DTOs
       const cartWithProducts = await Promise.all(
         cartItems.map(async (item) => {
           const product = await storage.getProduct(item.productId);
-          return { ...item, product };
+          const vendor = product ? await storage.getVendor(product.vendorId) : undefined;
+          return mapCartToDTO(item, product || undefined, vendor || undefined);
         })
       );
 
@@ -539,7 +691,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         quantity,
       });
 
-      res.status(201).json(cartItem);
+      res.status(201).json(mapCartToDTO(cartItem));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -558,7 +710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Cart item not found" });
       }
 
-      res.json(updatedItem);
+      res.json(mapCartToDTO(updatedItem));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -593,7 +745,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         orders = await storage.getOrdersByUser(req.session.user!.id);
       }
 
-      res.json(orders);
+      const orderDTOs = orders.map(order => mapOrderToDTO(order));
+      res.json(orderDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -611,7 +764,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clear cart after successful order
       await storage.clearCart(req.session.user!.id);
       
-      res.status(201).json(order);
+      res.status(201).json(mapOrderToDTO(order));
     } catch (error) {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ message: "Validation error", errors: error.errors });
@@ -634,7 +787,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Order not found" });
       }
 
-      res.json(updatedOrder);
+      res.json(mapOrderToDTO(updatedOrder));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -644,7 +797,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/categories", async (req, res) => {
     try {
       const categories = await storage.getAllCategories();
-      res.json(categories);
+      const categoryDTOs = categories.map(category => mapCategoryToDTO(category));
+      res.json(categoryDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -654,8 +808,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/users", requireAuth, requireRole(["admin"]), async (req, res) => {
     try {
       const users = await storage.getAllUsers();
-      const usersWithoutPasswords = users.map(user => ({ ...user, password: undefined }));
-      res.json(usersWithoutPasswords);
+      const userDTOs = users.map(user => mapUserToDTO(user));
+      res.json(userDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -664,7 +818,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/admin/vendors", requireAuth, requireRole(["admin"]), async (req, res) => {
     try {
       const vendors = await storage.getAllVendors();
-      res.json(vendors);
+      const vendorDTOs = vendors.map(vendor => mapVendorToDTO(vendor));
+      res.json(vendorDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -718,13 +873,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const allUsers = await storage.getAllUsers();
       const allProducts = await storage.getAllProducts();
-      const allReviews: any[] = [];
+      const allReviews: (ReviewDTO & { user: { id: string; firstName: string; lastName: string }; product: { id: string; name: string } })[] = [];
 
       // Get all reviews from all users
       for (const user of allUsers) {
         const userReviews = await storage.getReviewsByUser(user.id);
         const reviewsWithDetails = userReviews.map(review => ({
-          ...review,
+          ...mapReviewToDTO(review),
           user: {
             id: user.id,
             firstName: user.firstName,
@@ -740,7 +895,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
         .slice(0, 20);
 
-      res.json(recentReviews);
+      // Convert to DTOs but keep the enhanced structure for recent reviews
+      const reviewDTOs = recentReviews.map(review => ({
+        ...review,
+        user: review.user,
+        product: review.product
+      }));
+
+      res.json(reviewDTOs);
     } catch (error) {
       console.error("Error fetching recent reviews:", error);
       res.status(500).json({ message: "Internal server error" });
@@ -751,7 +913,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { productId } = req.params;
       const reviews = await storage.getReviewsByProduct(productId);
-      res.json(reviews);
+      const reviewDTOs = reviews.map(review => mapReviewToDTO(review));
+      res.json(reviewDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -761,7 +924,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId } = req.params;
       const reviews = await storage.getReviewsByUser(userId);
-      res.json(reviews);
+      const reviewDTOs = reviews.map(review => mapReviewToDTO(review));
+      res.json(reviewDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }
@@ -800,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (order.status === "delivered") {
           // Get order items for this specific order
           const orderItems = await storage.getOrderItemsByOrder(order.id);
-          const purchasedThisProduct = orderItems.some((item: any) => item.productId === reviewData.productId);
+          const purchasedThisProduct = orderItems.some((item: { productId: string }) => item.productId === reviewData.productId);
           
           if (purchasedThisProduct) {
             hasVerifiedPurchase = true;
@@ -817,9 +981,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const review = await storage.createReview(reviewData);
 
-      res.status(201).json(review);
-    } catch (error: any) {
-      if (error?.name === 'ZodError') {
+      res.status(201).json(mapReviewToDTO(review));
+    } catch (error: unknown) {
+      if (error instanceof z.ZodError) {
         return res.status(400).json({ 
           message: "Invalid review data", 
           errors: error.errors 

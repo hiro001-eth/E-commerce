@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { Product } from "@/lib/types";
+import type { ProductDTO as Product } from "@shared/schema";
 
 interface ProductCardProps {
   product: Product;

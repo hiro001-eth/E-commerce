@@ -262,3 +262,152 @@ export const vendorDeliverySchema = z.object({
 
 export type VendorLocation = z.infer<typeof vendorLocationSchema>;
 export type VendorDelivery = z.infer<typeof vendorDeliverySchema>;
+
+// API DTOs - These represent the JSON-serialized versions sent over HTTP
+// All Date fields become strings, nullable fields are properly typed
+
+export interface UserDTO {
+  id: string;
+  username: string;
+  email: string;
+  role: string;
+  firstName: string;
+  lastName: string;
+  phone: string | null;
+  address: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  } | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface VendorDTO {
+  id: string;
+  userId: string;
+  storeName: string;
+  storeDescription: string | null;
+  businessLicense: string | null;
+  storeLocation: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+    latitude?: number;
+    longitude?: number;
+  } | null;
+  deliveryAreas: string[];
+  deliveryRadius: number;
+  deliveryFee: string;
+  freeDeliveryThreshold: string;
+  isApproved: boolean;
+  rating: string;
+  totalSales: string;
+  createdAt: string;
+}
+
+export interface ProductDTO {
+  id: string;
+  vendorId: string;
+  categoryId: string | null;
+  name: string;
+  description: string;
+  price: string;
+  discountPrice: string | null;
+  stock: number;
+  images: string[];
+  sku: string;
+  availableInAreas: string[];
+  requiresShipping: boolean;
+  isActive: boolean;
+  allowsCoupons: boolean;
+  rating: string;
+  reviewCount: number;
+  createdAt: string;
+  updatedAt: string;
+  // Optional vendor information when joined
+  vendor?: {
+    storeName: string;
+    deliveryFee: string;
+    freeDeliveryThreshold: string;
+    deliveryRadius: number;
+    deliveryAreas: string[];
+  };
+}
+
+export interface CartItemDTO {
+  id: string;
+  userId: string;
+  productId: string;
+  quantity: number;
+  createdAt: string;
+  product?: ProductDTO;
+}
+
+export interface OrderDTO {
+  id: string;
+  userId: string;
+  vendorId: string;
+  total: string;
+  status: string;
+  paymentMethod: string;
+  deliveryAddress: {
+    firstName: string;
+    lastName: string;
+    phone: string;
+    street: string;
+    city: string;
+    state: string;
+    zipCode: string;
+    country: string;
+  };
+  couponCode: string | null;
+  discount: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrderItemDTO {
+  id: string;
+  orderId: string;
+  productId: string;
+  quantity: number;
+  price: string;
+  total: string;
+}
+
+export interface ReviewDTO {
+  id: string;
+  userId: string;
+  productId: string;
+  vendorId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+}
+
+export interface CouponDTO {
+  id: string;
+  vendorId: string;
+  code: string;
+  discountType: string;
+  discountValue: string;
+  minOrderAmount: string | null;
+  maxDiscount: string | null;
+  expiryDate: string | null;
+  isActive: boolean;
+  usageLimit: number | null;
+  usedCount: number;
+  createdAt: string;
+}
+
+export interface CategoryDTO {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+}

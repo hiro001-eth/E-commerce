@@ -11,7 +11,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { authAPI } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import type { User as UserType } from "@/lib/types";
+import type { UserDTO as UserType } from "@shared/schema";
 
 interface NavbarProps {
   user?: UserType;
@@ -29,7 +29,7 @@ export default function Navbar({ user, onCartToggle }: NavbarProps) {
     enabled: !!user,
   });
 
-  const cartItemsCount = cartItems?.length || 0;
+  const cartItemsCount = Array.isArray(cartItems) ? cartItems.length : 0;
 
   const logoutMutation = useMutation({
     mutationFn: authAPI.logout,
