@@ -1,0 +1,242 @@
+		
+		
+		Hi AI , 
+			Its me manjil working and exploring your potential how much you can do in this time :
+			
+			i will test you by giving you can actually can be able to create an E-Commerce Web app with fully login and signup featurese and all the features that are used in ecommerce should contain . 
+			
+			things you will do : 
+			
+			Dokan is the E-Commerce Name of my startup . In which it run in WebApp .  User can able to create an account do shoping and buy some things on COD cash on deilvery . Vendor can also list or open their product on
+			it and also vendor also able to manage thire particaular product on it . 
+			
+			decription on my Ecommerce Dokan ;
+			
+			no one can do any things with out loggin or created an account . user , vendor can create first when there is running every one should able to create an account .  
+			in /auth section there should be option of two login/signup as vendor or user so that it can be easy to get in dashboard of the particular parties . 
+			
+			user features:
+			
+			1. Login and signup and features for a client \ user . user can able to cretae an account by which use can able to change there password from account setting.
+			2. user can able to pick item or a product and add into cart for future shopping .
+			3. user can manually buy the product by filling all the delivery details and also user can see the invoice and also user can track their product where is the product still in vendor , or went for deilivery also .
+			3. user can set a review and all user can able to chat with vendor . 
+			4. user can see all the product use filter in sustainable price and all .
+			5. user can apply copnue code to get and get things cheaper price but only in those product vendor allows for coupone code to list for it .
+			6. and also add missing features user contain by which it give fully function featurese in user featurese .
+			
+			vendor features:
+			
+			1. store can be open in vendor with listing product and also a deatils pricing on it and also a showing discount and details of the product and all . 
+			2. vendor can able to create and login and signup as vendor through also . 
+			3. vendor can store product can be able to CRUD which means vendor can able to hide , edit or delete the product and also can be show how much product is available in right time .
+			
+			admin featurese: 
+			
+			1. admin can login deatils username and password is deafult set so that admin can login just by username and password and admin will go to that admin dashboard . 
+			2. able to see the all the store , how much product are listed in the Dokan Ecommerce and also a it all data should shown in the admin dashboard . 
+			3. all the power from user and also a vendor have in admin section . 
+			4. admin can do everythings in the webapp . 
+			
+			
+			overall featurese :
+			
+		1. these webapp should have the most secure data tarnsfer . 
+		2. all the data should store in databases for CRUD operation create , read , update and also a delete option . 
+		
+		technology what to use : 
+		frontend with :
+		1. html 
+		2. css with tailwind
+		3. js with ajax , json , react , nodejs 
+				
+		backend with : 
+		
+		1. python with flash also all the required libary that need to setup well for all the performing well and with no error 
+		
+		databases with :
+		# use mostly lightweight databases for storeing and retrive databases so that it will light and high proformance in so that it will occure light error on it and go with sutiable database you can use mysql , postgressql or mariedb etc 	
+		1. make it secure databases 
+		
+		
+		in theme design and page contain my webapp 
+		
+		Home , About , Contact , Shop, Policy , Privacy and cookie policy , account dashboard . 
+		
+		design and theme should be simple good looking , beautifull in white and skyblue light color mixed up and also a beautifull hover and smooth tranaction on page refresh and 
+		and make a dokan logo beautifull and when loading or refereshing is done then logo should shown there . and also a animation of how it look good add these all too . 
+		
+		make it good 
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				things need to change :
+				
+				
+				thank you so much replit you are best and you have done so much things according to my things request . 
+				
+				now the things is minor chnages in certain point so here i go :
+				
+				1. /Shop is showing error of these  shown below :
+						[plugin:runtime-error-plugin] A <Select.Item /> must have a value prop that is not an empty string. This is because the Select value can be set
+to an empty string to clear the selection and show the placeholder.
+Click outside, press Esc key, or fix the code to dismiss.
+You can also disable this overlay by setting server.hmr.overlay to false in vite.config.js.
+fix these all and make it smooth error free code . 
+
+				2. remove these section from home section Three Powerful Dashboards
+Choose your role and access tailored features designed for your needs
+
+User Dashboard
+Shop, track orders, and manage your account
+
+✓
+Browse and filter products
+✓
+Shopping cart & wishlist
+✓
+Order tracking & history
+✓
+Reviews & vendor chat
+View User Dashboard
+Vendor Dashboard
+Manage your store and products
+
+✓
+Product CRUD operations
+✓
+Inventory management
+✓
+Order fulfillment
+✓
+Sales analytics
+View Vendor Dashboard
+Admin Dashboard
+Platform oversight and management
+
+✓
+User & vendor management
+✓
+Platform analytics
+✓
+System configuration
+✓
+Content moderation
+View Admin Dashboard and add customer feedback and review on these section . 
+
+
+			3. and add real datain these section Total Users
+
+12,543
+
+Active Stores
+
+1,247
+
+Products Listed
+
+45,692  data should be accurate and present in the webapp . 
+
+			
+			
+				 4. and add these section with with proper sites of these also Quick Links
+Vendor Application Guide
+User Manual & FAQ
+Technical Documentation
+Community Forum there should be also some things that need to display that mean search and add reailable and needed things to run or behalf of ecommerce right and policy in the world . 
+
+
+				5. in /dashboard/user section i cant able to change things why ?? 
+Welcome back, Manjil!
+Here's what's happening with your account
+
+Total Orders
+
+0
+
+Total Spent
+
+$0.00
+
+Pending Orders
+
+0
+
+Delivered
+
+0
+
+Recent Orders
+Profile Settings
+Profile Information
+First Name
+Manjil
+
+Last Name
+as customer
+
+Email
+naloh45370@ncien.com
+
+Username
+test
+
+Account StatusInactive
+Edit Profile make it run . user can able to chnage there deatils and also from databases too . 
+
+
+		6. also these section also not running in user dashboard OrdersWishlistSettings make it run make it site of these too 
+		
+		7. remove these Quick Access
+Admin Login admin loogin is too crediantial things to present or shown 
+
+			8. why admin cant perform anythings User	Email	Role	Status	Actions
+Admin User
+
+@admin
+
+admin@dokan.com	admin	Active	
+
+
+Manjil as customer
+
+@test
+
+naloh45370@ncien.com	user	Inactive	
+
+
+Manjil as vendor
+
+@test_vendor
+
+vipera4627@ncien.com	vendor	Inactive	
+
+ make it perfect and able to perform all task need to run . 
+ 
+ 9. all these things you need to change and it will work good and also when vendor loogin or created account then vendor should be able to approve by admin make it perfect 
+ 10. make it full of backend with cryptography featurese encrypted things add with all with algorithm and all make it good .
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				
+				
+					
+		
+			
