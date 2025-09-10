@@ -21,15 +21,15 @@ export default function UserDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: authData } = useQuery({
+  const { data: authData } = useQuery<{ user: UserType }>({
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: orders = [], isLoading: ordersLoading } = useQuery({
+  const { data: orders = [], isLoading: ordersLoading } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
 
-  const user = authData?.user as UserType;
+  const user = authData?.user;
 
   // Update form data when user data changes
   useEffect(() => {
@@ -133,15 +133,38 @@ export default function UserDashboard() {
             </Card>
 
             <nav className="space-y-2">
-              <Button variant="ghost" className="w-full justify-start bg-primary/10 text-primary">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start bg-primary/10 text-primary"
+                onClick={() => {
+                  const ordersTab = document.querySelector('[data-testid="tab-orders"]') as HTMLElement;
+                  if (ordersTab) ordersTab.click();
+                }}
+              >
                 <ShoppingBag className="w-4 h-4 mr-2" />
                 Orders
               </Button>
-              <Button variant="ghost" className="w-full justify-start">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => {
+                  toast({
+                    title: "Wishlist Feature",
+                    description: "Wishlist functionality will be available soon. You can add products to your wishlist from the shop page.",
+                  });
+                }}
+              >
                 <Heart className="w-4 h-4 mr-2" />
                 Wishlist
               </Button>
-              <Button variant="ghost" className="w-full justify-start">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start"
+                onClick={() => {
+                  const profileTab = document.querySelector('[data-testid="tab-profile"]') as HTMLElement;
+                  if (profileTab) profileTab.click();
+                }}
+              >
                 <Settings className="w-4 h-4 mr-2" />
                 Settings
               </Button>
@@ -220,6 +243,7 @@ export default function UserDashboard() {
             <Tabs defaultValue="orders" className="space-y-4">
               <TabsList>
                 <TabsTrigger value="orders" data-testid="tab-orders">Recent Orders</TabsTrigger>
+                <TabsTrigger value="wishlist" data-testid="tab-wishlist">Wishlist</TabsTrigger>
                 <TabsTrigger value="profile" data-testid="tab-profile">Profile Settings</TabsTrigger>
               </TabsList>
 
@@ -286,6 +310,24 @@ export default function UserDashboard() {
                         ))}
                       </div>
                     )}
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="wishlist">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>My Wishlist</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8">
+                      <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">Your wishlist is empty</p>
+                      <p className="text-sm text-muted-foreground mb-4">Add products you love to keep track of them</p>
+                      <Button asChild>
+                        <a href="/shop">Browse Products</a>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
