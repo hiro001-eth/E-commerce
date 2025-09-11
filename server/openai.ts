@@ -44,7 +44,6 @@ const DOKAN_KNOWLEDGE = {
     "/shop": "Browse and search products",
     "/faq": "Frequently asked questions",
     "/vendor-guide": "Complete guide to becoming a vendor",
-    "/docs": "Technical documentation",
     "/contact": "Contact support team",
     "/about": "Learn about Dokan marketplace",
     "/privacy": "Privacy policy",
