@@ -15,7 +15,7 @@ export default function TechnicalDocs() {
               Technical Documentation
             </h1>
             <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Complete technical guide for developers, system administrators, and technical users
+              Platform overview and general information for users and businesses
             </p>
           </div>
         </div>
@@ -81,41 +81,25 @@ export default function TechnicalDocs() {
         </div>
       </section>
 
-      {/* API Documentation */}
+      {/* Platform Features */}
       <section className="py-16 bg-muted/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-foreground text-center mb-12">API Reference</h2>
+          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Platform Features</h2>
           
           <div className="grid lg:grid-cols-2 gap-8">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Users className="w-5 h-5 mr-2 text-primary" />
-                  Authentication & Users
+                  User Management
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 text-sm">
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/auth/login</code>
-                    <Badge variant="outline">Public</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/auth/register</code>
-                    <Badge variant="outline">Public</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/auth/me</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/auth/logout</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">PUT /api/profile</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
+                <div className="space-y-3 text-sm">
+                  <p>• Secure user registration and authentication</p>
+                  <p>• Role-based access control (Customer, Vendor, Admin)</p>
+                  <p>• Profile management and settings</p>
+                  <p>• Password security and account protection</p>
                 </div>
               </CardContent>
             </Card>
@@ -124,31 +108,15 @@ export default function TechnicalDocs() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Database className="w-5 h-5 mr-2 text-primary" />
-                  Products & Categories
+                  Product Management
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 text-sm">
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/products</code>
-                    <Badge variant="outline">Public</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/products</code>
-                    <Badge>Vendor Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/categories</code>
-                    <Badge variant="outline">Public</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/products/:id</code>
-                    <Badge variant="outline">Public</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">PUT /api/products/:id</code>
-                    <Badge>Vendor Required</Badge>
-                  </div>
+                <div className="space-y-3 text-sm">
+                  <p>• Comprehensive product catalog</p>
+                  <p>• Category-based organization</p>
+                  <p>• Advanced search and filtering</p>
+                  <p>• Inventory management for vendors</p>
                 </div>
               </CardContent>
             </Card>
@@ -157,31 +125,15 @@ export default function TechnicalDocs() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <GitBranch className="w-5 h-5 mr-2 text-primary" />
-                  Orders & Payments
+                  Order Processing
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 text-sm">
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/orders</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/orders</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">PUT /api/orders/:id/status</code>
-                    <Badge>Vendor/Admin</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/orders/unreviewed</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/orders/:id/items</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
+                <div className="space-y-3 text-sm">
+                  <p>• Streamlined checkout process</p>
+                  <p>• Order tracking and management</p>
+                  <p>• Payment processing integration</p>
+                  <p>• Delivery coordination</p>
                 </div>
               </CardContent>
             </Card>
@@ -190,156 +142,15 @@ export default function TechnicalDocs() {
               <CardHeader>
                 <CardTitle className="flex items-center">
                   <Zap className="w-5 h-5 mr-2 text-primary" />
-                  Reviews & Cart
+                  Customer Experience
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-4 text-sm">
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/reviews/recent</code>
-                    <Badge variant="outline">Public</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/reviews</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">GET /api/cart</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">POST /api/cart</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <code className="bg-muted px-2 py-1 rounded">DELETE /api/cart/:id</code>
-                    <Badge>Auth Required</Badge>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Database Schema */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Database Schema</h2>
-          
-          <div className="grid md:grid-cols-2 gap-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Core Entities</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm font-mono">
-                  <div>
-                    <div className="font-bold text-primary mb-2">users</div>
-                    <div className="ml-4 space-y-1 text-muted-foreground">
-                      <div>• id (varchar, PK)</div>
-                      <div>• email (varchar, unique)</div>
-                      <div>• username (varchar, unique)</div>
-                      <div>• firstName (varchar)</div>
-                      <div>• lastName (varchar)</div>
-                      <div>• role (enum: customer, vendor, admin)</div>
-                      <div>• createdAt (timestamp)</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="font-bold text-primary mb-2">products</div>
-                    <div className="ml-4 space-y-1 text-muted-foreground">
-                      <div>• id (varchar, PK)</div>
-                      <div>• name (varchar)</div>
-                      <div>• description (text)</div>
-                      <div>• price (decimal)</div>
-                      <div>• vendorId (varchar, FK)</div>
-                      <div>• images (text[])</div>
-                      <div>• createdAt (timestamp)</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Transactional Tables</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4 text-sm font-mono">
-                  <div>
-                    <div className="font-bold text-primary mb-2">orders</div>
-                    <div className="ml-4 space-y-1 text-muted-foreground">
-                      <div>• id (varchar, PK)</div>
-                      <div>• userId (varchar, FK)</div>
-                      <div>• vendorId (varchar, FK)</div>
-                      <div>• total (decimal)</div>
-                      <div>• status (enum)</div>
-                      <div>• deliveryAddress (json)</div>
-                      <div>• createdAt (timestamp)</div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <div className="font-bold text-primary mb-2">reviews</div>
-                    <div className="ml-4 space-y-1 text-muted-foreground">
-                      <div>• id (varchar, PK)</div>
-                      <div>• userId (varchar, FK)</div>
-                      <div>• productId (varchar, FK)</div>
-                      <div>• vendorId (varchar, FK)</div>
-                      <div>• rating (integer)</div>
-                      <div>• comment (text)</div>
-                      <div>• createdAt (timestamp)</div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Deployment */}
-      <section className="py-16 bg-muted/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Deployment Guide</h2>
-          
-          <div className="grid lg:grid-cols-2 gap-8">
-            <Card>
-              <CardHeader>
-                <CardTitle>Environment Setup</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <p className="text-muted-foreground">Environment configuration managed securely through Replit deployment system.</p>
-                  <div className="bg-muted p-4 rounded-lg text-sm">
-                    <p className="text-foreground">All sensitive configuration is handled automatically during deployment. No manual environment setup required.</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Build Commands</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="bg-muted p-4 rounded-lg text-sm font-mono space-y-2">
-                    <div># Install dependencies</div>
-                    <div>npm install</div>
-                    <div></div>
-                    <div># Database setup</div>
-                    <div>npm run db:push</div>
-                    <div></div>
-                    <div># Build application</div>
-                    <div>npm run build</div>
-                    <div></div>
-                    <div># Start production server</div>
-                    <div>npm start</div>
-                  </div>
+                <div className="space-y-3 text-sm">
+                  <p>• Shopping cart and wishlist functionality</p>
+                  <p>• Product reviews and ratings</p>
+                  <p>• Personalized recommendations</p>
+                  <p>• Customer support integration</p>
                 </div>
               </CardContent>
             </Card>
