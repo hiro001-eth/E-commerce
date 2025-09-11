@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/currency";
+import WishlistButton from "@/components/wishlist-button";
 import {
   ShoppingCart,
-  Heart,
   Star,
   Truck,
   MapPin,
@@ -23,7 +23,7 @@ import {
   Shield,
   Package,
 } from "lucide-react";
-import type { ProductDTO, ReviewDTO, WishlistDTO, User } from "@shared/schema";
+import type { ProductDTO, ReviewDTO, User } from "@shared/schema";
 import NotFound from "@/pages/not-found";
 
 export default function ProductDetails() {

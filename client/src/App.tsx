@@ -53,6 +53,12 @@ function AppContent() {
         <Route path="/auth" component={Auth} />
         <Route path="/shop" component={Shop} />
         <Route path="/product/:id" component={ProductDetails} />
+        <Route path="/checkout">
+          {() => {
+            const Checkout = require("@/pages/checkout").default;
+            return <Checkout />;
+          }}
+        </Route>
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
         <Route path="/privacy" component={Privacy} />
