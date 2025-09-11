@@ -622,13 +622,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify current password
-      const isCurrentPasswordValid = await passwordCrypto.verify(validatedData.currentPassword, user.password);
+      const isCurrentPasswordValid = await PasswordCrypto.verifyPassword(validatedData.currentPassword, user.password);
       if (!isCurrentPasswordValid) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }
 
       // Hash new password
-      const hashedNewPassword = await passwordCrypto.hash(validatedData.newPassword);
+      const hashedNewPassword = await PasswordCrypto.hashPassword(validatedData.newPassword);
       
       const updatedUser = await storage.updateUser(user.id, { password: hashedNewPassword });
       if (!updatedUser) {
@@ -659,7 +659,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify password before allowing email change
-      const isPasswordValid = await passwordCrypto.verify(validatedData.password, user.password);
+      const isPasswordValid = await PasswordCrypto.verifyPassword(validatedData.password, user.password);
       if (!isPasswordValid) {
         return res.status(400).json({ message: "Password is incorrect" });
       }
@@ -795,20 +795,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/products/:id", async (req, res) => {
-    try {
-      const product = await storage.getProduct(req.params.id);
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-      const vendor = await storage.getVendor(product.vendorId);
-      res.json(mapProductToDTO(product, vendor || undefined));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Get products for authenticated vendor
+  // Get products for authenticated vendor (must come BEFORE /api/products/:id)
   app.get("/api/products/vendor", requireAuth, requireRole(["vendor"]), async (req, res) => {
     try {
       const vendor = await storage.getVendorByUserId(req.session.user!.id);
@@ -819,6 +806,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const products = await storage.getProductsByVendor(vendor.id);
       const productDTOs = products.map(product => mapProductToDTO(product));
       res.json(productDTOs);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.get("/api/products/:id", async (req, res) => {
+    try {
+      const product = await storage.getProduct(req.params.id);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+      const vendor = await storage.getVendor(product.vendorId);
+      res.json(mapProductToDTO(product, vendor || undefined));
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

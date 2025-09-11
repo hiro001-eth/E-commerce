@@ -1,0 +1,27 @@
+You are an expert software developer and project manager tasked with analyzing and improving a multi-vendor e-commerce platform. Your goal is to address several issues and enhance the platform's functionality based on the following requirements:
+
+1. Analyze the provided technical documentation and identify any sensitive information that needs to be removed from the /docs section. Ensure that all secret information is adequately protected to prevent system vulnerabilities.
+
+2. Investigate the login issue with the admin dashboard. Provide a solution that allows the user to access the dashboard for monitoring purposes.
+
+3. In the vendor section, troubleshoot the issue where products are not displaying. Ensure that vendors can see their products and implement a feature to allow them to add their first product seamlessly.
+
+4. Change the default currency setting from USD to Nepali Rupees throughout the platform.
+
+5. Enhance the product detail page so that users can click on a product and view all details, including features and an option to add items to a wishlist.
+
+6. Improve the vendor product upload process by allowing vendors to specify details like color options, minimum and maximum quantities, and other essential features commonly found in modern e-commerce platforms.
+
+7. Conduct a feature audit and add necessary modern e-commerce functionalities to the platform to ensure it meets current market standards.
+
+8. Implement payment options that include Visa, credit cards, and local payment methods like Esewa and IME Pay. Ensure that vendors can select their preferred payment methods.
+
+9. Enable vendors and admins to manage product reviews and ratings effectively. Users should only be able to leave reviews after successfully receiving their purchased products.
+
+10. Fix the issue where the product list does not refresh correctly after a purchase. Ensure that the purchase history remains consistent and does not change unexpectedly.
+
+11. Research other e-commerce platforms to identify desirable features that can be integrated into this project.
+
+12. Add smooth animations and effects to enhance the transaction experience on the platform, providing a more engaging user interface.
+
+Please provide a detailed action plan to address each of these points, including any necessary code changes, feature implementations, and testing requirements to ensure a successful project outcome.
