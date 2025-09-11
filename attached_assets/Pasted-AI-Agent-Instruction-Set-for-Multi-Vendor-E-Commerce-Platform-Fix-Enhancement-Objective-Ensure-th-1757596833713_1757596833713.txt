@@ -1,0 +1,257 @@
+AI Agent Instruction Set for Multi-Vendor E-Commerce Platform Fix & Enhancement
+Objective
+
+Ensure that the multi-vendor e-commerce platform is fully functional, secure, user-friendly, and feature-rich. All current issues should be resolved, modern features added, and sensitive information secured. Output must be precise, error-free, and production-ready.
+
+1. Homepage Data Section Fix
+
+Task: Correctly display live statistics on the homepage.
+
+Requirements:
+
+Display accurate totals:
+
+Total Users (customers + vendors)
+
+Active Stores (vendors with active stores)
+
+Products Listed (all products currently listed)
+
+Ensure dynamic fetching from database; do not hardcode values.
+
+Automatically update counts in real-time or on page refresh.
+
+Example:
+
+Total Users: 12,543
+Active Stores: 1,247
+Products Listed: 45,692
+
+2. Remove Sensitive Information
+
+Task: Delete any sensitive info from /docs technical documentation and codebase.
+
+Requirements:
+
+Remove all API keys, SESSION_SECRET, database credentials, and passwords.
+
+Ensure /docs only contains public-facing technical content (architecture, stack, API references without secrets).
+
+Verify no secrets exist in frontend/backend code or version control.
+
+Example:
+Remove:
+
+DATABASE_URL=postgresql://...
+SESSION_SECRET=your-secret-key
+
+3. Admin Dashboard Login Issue
+
+Task: Fix login functionality for the admin dashboard.
+
+Requirements:
+
+Verify authentication flow for admin users.
+
+Fix session or token issues preventing login.
+
+Ensure secure password validation and session management.
+
+4. Vendor Products Visibility
+
+Task: Fix vendor product section so products appear correctly.
+
+Requirements:
+
+Ensure vendor can view all their uploaded products.
+
+Correct API and frontend integration if data is not rendering.
+
+Display placeholder message only if there are no products.
+
+5. Vendor Settings Fix
+
+Task: Enable editing vendor settings.
+
+Requirements:
+
+Allow vendors to update store name, description, email, password, and other details.
+
+Ensure changes save to database and reflect immediately.
+
+Validate inputs and show success/error messages.
+
+6. Currency Conversion
+
+Task: Set default currency to Nepali Rupees (NPR) instead of USD.
+
+Requirements:
+
+Update currency symbols and formatting throughout the platform (product prices, cart, checkout).
+
+Support real-time price formatting for NPR.
+
+7. Product Detail & Wishlist Feature
+
+Task: Enhance product pages.
+
+Requirements:
+
+Users can click a product to see full details (description, images, variants, stock, pricing).
+
+Add wishlist functionality (users can add/remove products).
+
+Display product reviews and ratings.
+
+8. Vendor Product Upload Enhancements
+
+Task: Make product upload fully featured.
+
+Requirements:
+
+Vendor can add:
+
+Multiple images
+
+Product variants (color, size, material, etc.)
+
+Minimum & maximum quantities
+
+Stock availability
+
+Pricing per variant
+
+Shipping options
+
+Validate all fields and ensure database integrity.
+
+9. Add Modern E-Commerce Features
+
+Task: Fully upgrade platform to modern e-commerce standards.
+
+Requirements:
+
+Product filtering and search
+
+Category management
+
+Promotions & discount codes
+
+Inventory management
+
+Multi-vendor order management
+
+Responsive UI for mobile & desktop
+
+Smooth UI animations for better user experience
+
+10. Payment Integration (Local Simulation)
+
+Task: Add multiple payment options for users and vendors.
+
+Requirements:
+
+Users can pay via:
+
+Visa, MasterCard, Credit/Debit Cards
+
+eSewa, IME Pay (simulate for localhost)
+
+Vendors can enable/disable preferred payment methods
+
+All payments tested locally (no real transaction required)
+
+11. Product Reviews & Rating Management
+
+Task: Implement review system.
+
+Requirements:
+
+Admin can manage (approve, delete) reviews.
+
+Users can review products only after successful purchase.
+
+Reviews include rating (stars), description, and optional images.
+
+12. Persistent Product History
+
+Task: Ensure product data persists correctly.
+
+Requirements:
+
+After a purchase or page refresh, product visibility and order history should not reset.
+
+Ensure frontend state reflects database accurately.
+
+13. Benchmark Against Competitors
+
+Task: Compare top e-commerce platforms and integrate must-have features.
+
+Requirements:
+
+Implement features like:
+
+Advanced filtering & sorting
+
+Personalized recommendations
+
+Live chat support
+
+Customer notifications (email/SMS)
+
+14. Smooth Animations & Transaction UX
+
+Task: Improve user experience with animations.
+
+Requirements:
+
+Add smooth transitions for:
+
+Adding to cart
+
+Wishlist actions
+
+Checkout process
+
+Page navigation
+
+Ensure animations do not slow down the platform.
+
+Execution Guidelines for AI Agents
+
+Accuracy is critical: All dynamic data must reflect the real database.
+
+Security first: No secrets should be exposed anywhere.
+
+Testing required: Every feature must be verified locally before deployment.
+
+Documentation: Update documentation after every change with screenshots/examples.
+
+Code standards: Use TypeScript, React 18, Tailwind CSS, Node.js, Express, and follow best practices.
+
+Example Expected Results
+
+Homepage Stats:
+
+Total Users: 12,543
+Active Stores: 1,247
+Products Listed: 45,692
+
+
+Vendor Product Upload:
+
+Multiple variants (colors: red, blue, green)
+
+Stock: 10–100 units
+
+Price per variant
+
+Uploaded successfully → appears in vendor dashboard immediately
+
+Payment Options:
+
+Checkout page shows NPR pricing
+
+Options: eSewa, IME Pay, Visa, Credit Card
+
+Vendor can enable/disable methods
