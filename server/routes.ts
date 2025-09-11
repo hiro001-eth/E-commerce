@@ -1,82 +1,66 @@
-import express, { type Express, Request, Response, NextFunction } from "express";
-import { createServer, type Server } from "http";
+import express from "express";
 import session from "express-session";
-import MemoryStore from "memorystore";
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import bcrypt from "bcrypt";
 import multer from "multer";
 import path from "path";
-import fs from "fs";
+import fs from "fs/promises";
+import { z } from "zod";
+import { fromZodError } from "zod-validation-error";
+import Stripe from "stripe";
+import OpenAI from "openai";
 import { storage } from "./storage";
 import { 
-  loginSchema, 
-  registerSchema,
-  insertProductSchema,
+  insertUserSchema, 
+  insertProductSchema, 
+  insertCategorySchema,
   insertOrderSchema,
   insertReviewSchema,
-  insertCouponSchema,
   insertWishlistSchema,
-  locationFilterSchema,
-  insertVendorSchema,
-  vendorLocationSchema,
-  vendorDeliverySchema,
-  vendorSettingsSchema,
-  changePasswordSchema,
-  changeEmailSchema,
-  type User,
+  type User, 
   type Product,
-  type Vendor,
-  type Order,
-  type Cart,
   type Review,
-  type Coupon,
-  type Category,
-  type Wishlist,
-  type UserDTO,
-  type ProductDTO,
-  type VendorDTO,
-  type OrderDTO,
-  type CartItemDTO,
-  type ReviewDTO,
-  type CouponDTO,
-  type CategoryDTO,
-  type WishlistDTO
-} from "@shared/schema";
-import { z } from "zod";
-import { PasswordCrypto, DataCrypto, SessionCrypto, InputSecurity, SecurityAudit } from "./crypto";
-import { getChatResponse, type ChatRequest } from "./openai";
-import Stripe from "stripe";
+  type CartItem,
+  type Order,
+  type OrderItem
+} from "../shared/schema";
 
-const MemStore = MemoryStore(session);
+const router = express.Router();
+
+// Session configuration
+import MemoryStoreFactory from 'memorystore';
+const MemoryStore = MemoryStoreFactory(session);
+const sessionStore = new MemoryStore();
 
 // Initialize Stripe
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2025-08-27.basil",
+  apiVersion: "2024-06-20",
 });
 
 // Multer configuration for file uploads
 const storage_multer = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(process.cwd(), 'uploads', 'products');
-    // Ensure directory exists
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
+  destination: async (req, file, cb) => {
+    const uploadDir = 'uploads';
+    try {
+      await fs.mkdir(uploadDir, { recursive: true });
+    } catch (error) {
+      console.error('Error creating upload directory:', error);
     }
-    cb(null, uploadPath);
+    cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Generate unique filename
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const extension = path.extname(file.originalname);
-    cb(null, `product-${uniqueSuffix}${extension}`);
+    cb(null, `${file.fieldname}-${uniqueSuffix}${path.extname(file.originalname)}`);
   }
 });
 
-const upload = multer({
+const upload = multer({ 
   storage: storage_multer,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    // Check file type
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
@@ -84,1512 +68,689 @@ const upload = multer({
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only image files (JPEG, JPG, PNG, GIF, WEBP) are allowed'));
+      cb(new Error('Only image files are allowed'));
     }
   }
 });
 
-// Entity to DTO mapping functions
-function mapUserToDTO(user: User): UserDTO {
-  return {
-    id: user.id,
-    username: user.username,
-    email: user.email,
-    role: user.role,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    phone: user.phone,
-    address: user.address,
-    isActive: user.isActive,
-    createdAt: user.createdAt?.toISOString() ?? new Date().toISOString(),
-  };
-}
-
-function mapVendorToDTO(vendor: Vendor): VendorDTO {
-  return {
-    id: vendor.id,
-    userId: vendor.userId,
-    storeName: vendor.storeName,
-    storeDescription: vendor.storeDescription,
-    businessLicense: vendor.businessLicense,
-    storeLocation: vendor.storeLocation,
-    deliveryAreas: vendor.deliveryAreas ?? [],
-    deliveryRadius: vendor.deliveryRadius ?? 10,
-    deliveryFee: vendor.deliveryFee ?? "0",
-    freeDeliveryThreshold: vendor.freeDeliveryThreshold ?? "50",
-    isApproved: vendor.isApproved,
-    rating: vendor.rating ?? "0",
-    totalSales: vendor.totalSales ?? "0",
-    createdAt: vendor.createdAt?.toISOString() ?? new Date().toISOString(),
-  };
-}
-
-function mapProductToDTO(product: Product, vendor?: Vendor): ProductDTO {
-  return {
-    id: product.id,
-    vendorId: product.vendorId,
-    categoryId: product.categoryId,
-    name: product.name,
-    description: product.description,
-    price: product.price,
-    discountPrice: product.discountPrice,
-    stock: product.stock,
-    minOrderQuantity: product.minOrderQuantity,
-    maxOrderQuantity: product.maxOrderQuantity,
-    images: product.images || [],
-    sku: product.sku,
-    brand: product.brand,
-    weight: product.weight,
-    dimensions: product.dimensions,
-    colors: product.colors || [],
-    sizes: product.sizes || [],
-    tags: product.tags || [],
-    warrantyPeriod: product.warrantyPeriod || 0,
-    isDigitalProduct: product.isDigitalProduct,
-    availableInAreas: product.availableInAreas || [],
-    requiresShipping: product.requiresShipping,
-    isActive: product.isActive,
-    allowsCoupons: product.allowsCoupons,
-    isFeatured: product.isFeatured,
-    rating: product.rating || "0",
-    reviewCount: product.reviewCount || 0,
-    createdAt: product.createdAt?.toISOString() ?? new Date().toISOString(),
-    updatedAt: product.updatedAt?.toISOString() ?? new Date().toISOString(),
-    ...(vendor && {
-      vendor: {
-        storeName: vendor.storeName,
-        deliveryFee: vendor.deliveryFee ?? "0",
-        freeDeliveryThreshold: vendor.freeDeliveryThreshold ?? "50",
-        deliveryRadius: vendor.deliveryRadius ?? 10,
-        deliveryAreas: vendor.deliveryAreas || [],
-      }
-    })
-  };
-}
-
-function mapOrderToDTO(order: Order): OrderDTO {
-  return {
-    id: order.id,
-    userId: order.userId,
-    vendorId: order.vendorId,
-    total: order.total,
-    status: order.status,
-    paymentMethod: order.paymentMethod,
-    deliveryAddress: order.deliveryAddress,
-    couponCode: order.couponCode,
-    discount: order.discount ?? "0",
-    createdAt: order.createdAt?.toISOString() ?? new Date().toISOString(),
-    updatedAt: order.updatedAt?.toISOString() ?? new Date().toISOString(),
-  };
-}
-
-function mapCartToDTO(cart: Cart, product?: Product, vendor?: Vendor): CartItemDTO {
-  return {
-    id: cart.id,
-    userId: cart.userId,
-    productId: cart.productId,
-    quantity: cart.quantity,
-    createdAt: cart.createdAt?.toISOString() ?? new Date().toISOString(),
-    ...(product && { product: mapProductToDTO(product, vendor) })
-  };
-}
-
-function mapWishlistToDTO(wishlist: Wishlist, product?: Product, vendor?: Vendor): WishlistDTO {
-  return {
-    id: wishlist.id,
-    userId: wishlist.userId,
-    productId: wishlist.productId,
-    createdAt: wishlist.createdAt?.toISOString() ?? new Date().toISOString(),
-    ...(product && { product: mapProductToDTO(product, vendor) })
-  };
-}
-
-function mapReviewToDTO(review: Review): ReviewDTO {
-  return {
-    id: review.id,
-    userId: review.userId,
-    productId: review.productId,
-    vendorId: review.vendorId,
-    rating: review.rating,
-    comment: review.comment,
-    createdAt: review.createdAt?.toISOString() ?? new Date().toISOString(),
-  };
-}
-
-function mapCouponToDTO(coupon: Coupon): CouponDTO {
-  return {
-    id: coupon.id,
-    vendorId: coupon.vendorId,
-    code: coupon.code,
-    discountType: coupon.discountType,
-    discountValue: coupon.discountValue,
-    minOrderAmount: coupon.minOrderAmount,
-    maxDiscount: coupon.maxDiscount,
-    expiryDate: coupon.expiryDate?.toISOString() || null,
-    isActive: coupon.isActive,
-    usageLimit: coupon.usageLimit,
-    usedCount: coupon.usedCount ?? 0,
-    createdAt: coupon.createdAt?.toISOString() ?? new Date().toISOString(),
-  };
-}
-
-function mapCategoryToDTO(category: Category): CategoryDTO {
-  return {
-    id: category.id,
-    name: category.name,
-    description: category.description,
-    isActive: category.isActive,
-  };
-}
-
-declare module "express-session" {
-  interface SessionData {
-    user?: User;
-  }
-}
-
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Serve static files from uploads directory
-  app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
-
-  // Session middleware
-  app.use(
-    session({
-      store: new MemStore({
-        checkPeriod: 86400000, // prune expired entries every 24h
-      }),
-      secret: process.env.SESSION_SECRET || "dokan-secret-key",
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: false, // Set to true in production with HTTPS
-        httpOnly: true,
-        maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-        sameSite: "lax", // Important for cross-origin requests
-      },
-    })
-  );
-
-  // Auth middleware
-  const requireAuth = (req: Request, res: Response, next: NextFunction) => {
-    if (!req.session.user) {
-      return res.status(401).json({ message: "Authentication required" });
-    }
-    next();
-  };
-
-  const requireRole = (roles: string[]) => (req: Request, res: Response, next: NextFunction) => {
-    if (!req.session.user || !roles.includes(req.session.user.role)) {
-      return res.status(403).json({ message: "Insufficient permissions" });
-    }
-    next();
-  };
-
-  // Auth routes
-  app.post("/api/auth/register", async (req, res) => {
-    try {
-      const data = registerSchema.parse(req.body);
-      
-      // Validate password strength
-      const passwordValidation = InputSecurity.validatePasswordStrength(data.password);
-      if (!passwordValidation.isValid) {
-        return res.status(400).json({ 
-          message: "Password does not meet security requirements", 
-          errors: passwordValidation.errors 
-        });
-      }
-      
-      // Check if user already exists
-      const existingUser = await storage.getUserByEmail(data.email);
-      if (existingUser) {
-        return res.status(400).json({ message: "User already exists" });
-      }
-
-      const existingUsername = await storage.getUserByUsername(data.username);
-      if (existingUsername) {
-        return res.status(400).json({ message: "Username already taken" });
-      }
-
-      // Hash password before storing
-      const { confirmPassword, password, ...userData } = data;
-      const hashedPassword = await PasswordCrypto.hashPassword(password);
-      
-      // Create user with hashed password
-      const user = await storage.createUser({ 
-        ...userData, 
-        password: hashedPassword 
-      });
-      
-      // If user is registering as vendor, create vendor record
-      if (data.role === "vendor") {
-        await storage.createVendor({
-          userId: user.id,
-          storeName: `${user.firstName} ${user.lastName}'s Store`,
-          isApproved: true, // Automatic activation - no manual approval required
-        });
-      }
-      
-      // Set session with sanitized user data
-      req.session.user = SessionCrypto.sanitizeUserForSession(user);
-      
-      // Log security event
-      SecurityAudit.logSecurityEvent({
-        type: 'registration',
-        userId: user.id,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      
-      res.json({ user: mapUserToDTO(user) });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/auth/login", async (req, res) => {
-    try {
-      const data = loginSchema.parse(req.body);
-      
-      const user = await storage.getUserByEmail(data.email);
-      if (!user) {
-        // Log failed login attempt
-        SecurityAudit.logSecurityEvent({
-          type: 'failed_login',
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-          details: { email: data.email, reason: 'user_not_found' }
-        });
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      // Compare password with hashed version
-      const isPasswordValid = await PasswordCrypto.comparePassword(data.password, user.password);
-      if (!isPasswordValid) {
-        // Log failed login attempt
-        SecurityAudit.logSecurityEvent({
-          type: 'failed_login',
-          userId: user.id,
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-          details: { email: data.email, reason: 'invalid_password' }
-        });
-        return res.status(401).json({ message: "Invalid credentials" });
-      }
-
-      if (!user.isActive) {
-        SecurityAudit.logSecurityEvent({
-          type: 'failed_login',
-          userId: user.id,
-          ip: req.ip,
-          userAgent: req.get('User-Agent'),
-          details: { email: data.email, reason: 'account_disabled' }
-        });
-        return res.status(401).json({ message: "Account is disabled" });
-      }
-
-      // Set session with sanitized user data
-      req.session.user = SessionCrypto.sanitizeUserForSession(user);
-      
-      // Log successful login
-      SecurityAudit.logSecurityEvent({
-        type: 'login',
-        userId: user.id,
-        ip: req.ip,
-        userAgent: req.get('User-Agent')
-      });
-      
-      res.json({ user: mapUserToDTO(user) });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/auth/logout", (req, res) => {
-    req.session.destroy((err) => {
-      if (err) {
-        return res.status(500).json({ message: "Could not log out" });
-      }
-      res.json({ message: "Logged out successfully" });
+// OpenAI configuration (optional)
+let openai: OpenAI | null = null;
+try {
+  if (process.env.OPENAI_API_KEY) {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
     });
-  });
-
-  app.get("/api/auth/me", async (req, res) => {
-    if (req.session.user) {
-      const fullUser = await storage.getUser(req.session.user.id);
-      if (fullUser) {
-        res.json({ user: mapUserToDTO(fullUser) });
-      } else {
-        res.status(404).json({ message: "User not found" });
-      }
-    } else {
-      res.status(401).json({ message: "Not authenticated" });
-    }
-  });
-
-  // Default admin login route
-  app.post("/api/auth/admin-login", async (req, res) => {
-    try {
-      const { username, password } = req.body;
-      
-      // Check for default admin credentials
-      if (username === "admin" && password === "admin123") {
-        // Check if admin user exists, create if not
-        let adminUser = await storage.getUserByEmail("admin@dokan.com");
-        
-        if (!adminUser) {
-          // Create default admin user
-          const hashedPassword = await PasswordCrypto.hashPassword("admin123");
-          adminUser = await storage.createUser({
-            username: "admin",
-            email: "admin@dokan.com",
-            password: hashedPassword,
-            role: "admin",
-            firstName: "System",
-            lastName: "Administrator",
-            isActive: true,
-          });
-        }
-
-        // Set session
-        req.session.user = SessionCrypto.sanitizeUserForSession(adminUser);
-        
-        // Log security event
-        SecurityAudit.logSecurityEvent({
-          type: 'login',
-          userId: adminUser.id,
-          ip: req.ip,
-          userAgent: req.get('User-Agent')
-        });
-
-        res.json({ user: mapUserToDTO(adminUser) });
-      } else {
-        res.status(401).json({ message: "Invalid admin credentials" });
-      }
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Profile update route
-  app.put("/api/profile", requireAuth, async (req, res) => {
-    try {
-      const allowedFields = ['firstName', 'lastName', 'phone'];
-      const updates = Object.keys(req.body)
-        .filter(key => allowedFields.includes(key))
-        .reduce((obj: Record<string, unknown>, key) => {
-          obj[key] = req.body[key];
-          return obj;
-        }, {} as Record<string, unknown>);
-
-      if (Object.keys(updates).length === 0) {
-        return res.status(400).json({ message: "No valid fields to update" });
-      }
-
-      const updatedUser = await storage.updateUser(req.session.user!.id, updates);
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Update session
-      req.session.user = updatedUser;
-
-      res.json({ user: mapUserToDTO(updatedUser) });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Vendor application
-  app.post("/api/vendor/apply", requireAuth, async (req, res) => {
-    try {
-      const { storeName, storeDescription, businessLicense } = req.body;
-      
-      if (!storeName) {
-        return res.status(400).json({ message: "Store name is required" });
-      }
-
-      // Check if user already has a vendor application
-      const existingVendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (existingVendor) {
-        return res.status(400).json({ message: "Vendor application already exists" });
-      }
-
-      const vendor = await storage.createVendor({
-        userId: req.session.user!.id,
-        storeName,
-        storeDescription: storeDescription || null,
-        businessLicense: businessLicense || null,
-        isApproved: true, // Automatic activation - no manual approval required
-      });
-
-      res.json(mapVendorToDTO(vendor));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Get current vendor information with auto-creation for vendor-role users
-  app.get("/api/vendors/me", requireAuth, async (req, res) => {
-    try {
-      let vendor = await storage.getVendorByUserId(req.session.user!.id);
-      
-      // Auto-create vendor record if user has vendor role but no vendor record (legacy users)
-      if (!vendor && req.session.user!.role === "vendor") {
-        const user = await storage.getUser(req.session.user!.id);
-        if (user && user.role === "vendor") {
-          vendor = await storage.createVendor({
-            userId: user.id,
-            storeName: `${user.firstName} ${user.lastName}'s Store`,
-            isApproved: true,
-          });
-        }
-      }
-      
-      if (!vendor) {
-        return res.status(404).json({ message: "Vendor not found" });
-      }
-      res.json(mapVendorToDTO(vendor));
-    } catch (error) {
-      console.error("Vendor lookup error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Update vendor store location
-  app.put("/api/vendor/location", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (!vendor) {
-        return res.status(403).json({ message: "Vendor not found" });
-      }
-
-      // Validate request body
-      const validatedData = vendorLocationSchema.parse(req.body);
-      
-      const storeLocation = {
-        street: validatedData.street,
-        city: validatedData.city,
-        state: validatedData.state,
-        zipCode: validatedData.zipCode,
-        country: validatedData.country || "United States",
-        latitude: validatedData.latitude,
-        longitude: validatedData.longitude,
-      };
-
-      const updatedVendor = await storage.updateVendor(vendor.id, { storeLocation });
-      if (!updatedVendor) {
-        return res.status(500).json({ message: "Failed to update location" });
-      }
-
-      res.json(mapVendorToDTO(updatedVendor));
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
-      }
-      console.error("Location update error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Update vendor settings
-  app.put("/api/vendor/settings", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (!vendor) {
-        return res.status(403).json({ message: "Vendor not found" });
-      }
-
-      const validatedData = vendorSettingsSchema.parse(req.body);
-      
-      const updatedVendor = await storage.updateVendor(vendor.id, validatedData);
-      if (!updatedVendor) {
-        return res.status(500).json({ message: "Failed to update vendor settings" });
-      }
-
-      res.json(mapVendorToDTO(updatedVendor));
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
-      }
-      console.error("Vendor settings update error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Change user password
-  app.put("/api/auth/change-password", requireAuth, async (req, res) => {
-    try {
-      const validatedData = changePasswordSchema.parse(req.body);
-      
-      const user = await storage.getUser(req.session.user!.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Verify current password
-      const isCurrentPasswordValid = await PasswordCrypto.comparePassword(validatedData.currentPassword, user.password);
-      if (!isCurrentPasswordValid) {
-        return res.status(400).json({ message: "Current password is incorrect" });
-      }
-
-      // Hash new password
-      const hashedNewPassword = await PasswordCrypto.hashPassword(validatedData.newPassword);
-      
-      const updatedUser = await storage.updateUser(user.id, { password: hashedNewPassword });
-      if (!updatedUser) {
-        return res.status(500).json({ message: "Failed to update password" });
-      }
-
-      res.json({ message: "Password updated successfully" });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
-      }
-      console.error("Password change error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Change user email
-  app.put("/api/auth/change-email", requireAuth, async (req, res) => {
-    try {
-      const validatedData = changeEmailSchema.parse(req.body);
-      
-      const user = await storage.getUser(req.session.user!.id);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      // Verify password before allowing email change
-      const isPasswordValid = await PasswordCrypto.comparePassword(validatedData.password, user.password);
-      if (!isPasswordValid) {
-        return res.status(400).json({ message: "Password is incorrect" });
-      }
-
-      // Check if email is already taken
-      const existingUser = await storage.getUserByEmail(validatedData.newEmail);
-      if (existingUser && existingUser.id !== user.id) {
-        return res.status(400).json({ message: "Email is already taken" });
-      }
-
-      const updatedUser = await storage.updateUser(user.id, { email: validatedData.newEmail });
-      if (!updatedUser) {
-        return res.status(500).json({ message: "Failed to update email" });
-      }
-
-      // Update session
-      req.session.user = updatedUser;
-
-      res.json({ message: "Email updated successfully", user: mapUserToDTO(updatedUser) });
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
-      }
-      console.error("Email change error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Update vendor delivery settings
-  app.put("/api/vendor/delivery", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (!vendor) {
-        return res.status(403).json({ message: "Vendor not found" });
-      }
-
-      // Validate request body
-      const validatedData = vendorDeliverySchema.parse(req.body);
-
-      const updates: Partial<{
-        deliveryAreas: string[];
-        deliveryRadius: number;
-        deliveryFee: string;
-        freeDeliveryThreshold: string;
-      }> = {};
-      if (validatedData.deliveryAreas !== undefined) updates.deliveryAreas = validatedData.deliveryAreas;
-      if (validatedData.deliveryRadius !== undefined) updates.deliveryRadius = validatedData.deliveryRadius;
-      if (validatedData.deliveryFee !== undefined) updates.deliveryFee = validatedData.deliveryFee.toString();
-      if (validatedData.freeDeliveryThreshold !== undefined) updates.freeDeliveryThreshold = validatedData.freeDeliveryThreshold.toString();
-
-      const updatedVendor = await storage.updateVendor(vendor.id, updates);
-      if (!updatedVendor) {
-        return res.status(500).json({ message: "Failed to update delivery settings" });
-      }
-
-      res.json(mapVendorToDTO(updatedVendor));
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Validation error", 
-          errors: error.errors 
-        });
-      }
-      console.error("Delivery settings update error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Product routes
-  app.get("/api/products", async (req, res) => {
-    try {
-      const { search, category, city, state, zipCode, radius } = req.query;
-      
-      let products;
-      
-      // Handle location-based filtering
-      if (city || state || zipCode) {
-        try {
-          const locationFilter = locationFilterSchema.parse({
-            city: city as string,
-            state: state as string,
-            zipCode: zipCode as string,
-            radius: radius ? parseInt(radius as string) : undefined,
-          });
-          
-          products = await storage.getProductsByLocation(locationFilter);
-          
-          // Apply additional filters if present
-          if (search) {
-            const searchTerm = search.toString().toLowerCase();
-            products = products.filter(product => 
-              product.name.toLowerCase().includes(searchTerm) ||
-              product.description.toLowerCase().includes(searchTerm)
-            );
-          }
-          
-          if (category) {
-            products = products.filter(product => product.categoryId === category);
-          }
-          
-        } catch (validationError) {
-          return res.status(400).json({ 
-            message: "Invalid location parameters",
-            errors: validationError instanceof z.ZodError ? validationError.errors : []
-          });
-        }
-      } else {
-        // Original filtering logic when no location specified
-        if (search) {
-          products = await storage.searchProducts(search as string);
-        } else if (category) {
-          products = await storage.getProductsByCategory(category as string);
-        } else {
-          products = await storage.getAllProducts();
-        }
-      }
-
-      // Enhance products with vendor delivery information and convert to DTOs
-      const productsWithVendorInfo = await Promise.all(
-        products.map(async (product) => {
-          const vendor = await storage.getVendor(product.vendorId);
-          return mapProductToDTO(product, vendor || undefined);
-        })
-      );
-
-      res.json(productsWithVendorInfo);
-    } catch (error) {
-      console.error("Products API error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Get products for authenticated vendor (must come BEFORE /api/products/:id)
-  app.get("/api/products/vendor", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (!vendor) {
-        return res.status(403).json({ message: "Vendor not found" });
-      }
-
-      const products = await storage.getProductsByVendor(vendor.id);
-      const productDTOs = products.map(product => mapProductToDTO(product));
-      res.json(productDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/products/:id", async (req, res) => {
-    try {
-      const product = await storage.getProduct(req.params.id);
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-      const vendor = await storage.getVendor(product.vendorId);
-      res.json(mapProductToDTO(product, vendor || undefined));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/products", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (!vendor || !vendor.isApproved) {
-        return res.status(403).json({ message: "Vendor not approved" });
-      }
-
-      const data = insertProductSchema.parse({
-        ...req.body,
-        vendorId: vendor.id,
-      });
-
-      const product = await storage.createProduct(data);
-      res.status(201).json(mapProductToDTO(product));
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.put("/api/products/:id", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (!vendor) {
-        return res.status(403).json({ message: "Vendor access required" });
-      }
-
-      const product = await storage.getProduct(req.params.id);
-      if (!product || product.vendorId !== vendor.id) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-
-      const updatedProduct = await storage.updateProduct(req.params.id, req.body);
-      if (!updatedProduct) {
-        return res.status(500).json({ message: "Failed to update product" });
-      }
-      const vendorData = await storage.getVendor(updatedProduct.vendorId);
-      res.json(mapProductToDTO(updatedProduct, vendorData || undefined));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.delete("/api/products/:id", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
-      if (!vendor) {
-        return res.status(403).json({ message: "Vendor access required" });
-      }
-
-      const product = await storage.getProduct(req.params.id);
-      if (!product || product.vendorId !== vendor.id) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-
-      // Delete associated image files if they exist
-      if (product.images && product.images.length > 0) {
-        product.images.forEach(imagePath => {
-          if (imagePath.startsWith('/uploads/')) {
-            const fullPath = path.join(process.cwd(), imagePath);
-            if (fs.existsSync(fullPath)) {
-              fs.unlinkSync(fullPath);
-            }
-          }
-        });
-      }
-
-      await storage.deleteProduct(req.params.id);
-      res.json({ message: "Product deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // File upload route for product images
-  app.post("/api/upload/product-image", requireAuth, requireRole(["vendor"]), upload.single('image'), (req, res) => {
-    try {
-      if (!req.file) {
-        return res.status(400).json({ message: "No file uploaded" });
-      }
-
-      // Return the image path relative to the public directory
-      const imagePath = `/uploads/products/${req.file.filename}`;
-      
-      res.json({ 
-        message: "Image uploaded successfully",
-        imagePath,
-        originalName: req.file.originalname,
-        size: req.file.size
-      });
-    } catch (error) {
-      res.status(500).json({ message: "File upload failed" });
-    }
-  });
-
-  // Delete uploaded image route
-  app.delete("/api/upload/product-image", requireAuth, requireRole(["vendor"]), async (req, res) => {
-    try {
-      const { imagePath } = req.body;
-      
-      if (!imagePath || !imagePath.startsWith('/uploads/')) {
-        return res.status(400).json({ message: "Invalid image path" });
-      }
-
-      const fullPath = path.join(process.cwd(), imagePath);
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
-        res.json({ message: "Image deleted successfully" });
-      } else {
-        res.status(404).json({ message: "Image not found" });
-      }
-    } catch (error) {
-      res.status(500).json({ message: "Failed to delete image" });
-    }
-  });
-
-  // Cart routes
-  app.get("/api/cart", requireAuth, async (req, res) => {
-    try {
-      const cartItems = await storage.getCartByUser(req.session.user!.id);
-      
-      // Fetch product details for each cart item and convert to DTOs
-      const cartWithProducts = await Promise.all(
-        cartItems.map(async (item) => {
-          const product = await storage.getProduct(item.productId);
-          const vendor = product ? await storage.getVendor(product.vendorId) : undefined;
-          return mapCartToDTO(item, product || undefined, vendor || undefined);
-        })
-      );
-
-      res.json(cartWithProducts);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/cart", requireAuth, async (req, res) => {
-    try {
-      const { productId, quantity = 1 } = req.body;
-      
-      if (!productId) {
-        return res.status(400).json({ message: "Product ID is required" });
-      }
-
-      const product = await storage.getProduct(productId);
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-
-      const cartItem = await storage.addToCart({
-        userId: req.session.user!.id,
-        productId,
-        quantity,
-      });
-
-      res.status(201).json(mapCartToDTO(cartItem));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.put("/api/cart/:id", requireAuth, async (req, res) => {
-    try {
-      const { quantity } = req.body;
-      
-      if (!quantity || quantity < 1) {
-        return res.status(400).json({ message: "Valid quantity is required" });
-      }
-
-      const updatedItem = await storage.updateCartItem(req.params.id, quantity);
-      if (!updatedItem) {
-        return res.status(404).json({ message: "Cart item not found" });
-      }
-
-      res.json(mapCartToDTO(updatedItem));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.delete("/api/cart/:id", requireAuth, async (req, res) => {
-    try {
-      const deleted = await storage.removeFromCart(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Cart item not found" });
-      }
-      res.json({ message: "Item removed from cart" });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Wishlist routes
-  app.get("/api/wishlist", requireAuth, async (req, res) => {
-    try {
-      const wishlistItems = await storage.getWishlistByUser(req.session.user!.id);
-      
-      // Fetch product details for each wishlist item and convert to DTOs
-      const wishlistWithProducts = await Promise.all(
-        wishlistItems.map(async (item) => {
-          const product = await storage.getProduct(item.productId);
-          const vendor = product ? await storage.getVendor(product.vendorId) : undefined;
-          return mapWishlistToDTO(item, product || undefined, vendor || undefined);
-        })
-      );
-
-      res.json(wishlistWithProducts);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/wishlist", requireAuth, async (req, res) => {
-    try {
-      const { productId } = req.body;
-      
-      if (!productId) {
-        return res.status(400).json({ message: "Product ID is required" });
-      }
-
-      const product = await storage.getProduct(productId);
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-
-      const wishlistItem = await storage.addToWishlist({
-        userId: req.session.user!.id,
-        productId,
-      });
-
-      res.status(201).json(mapWishlistToDTO(wishlistItem));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.delete("/api/wishlist/:id", requireAuth, async (req, res) => {
-    try {
-      const deleted = await storage.removeFromWishlist(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "Wishlist item not found" });
-      }
-      res.json({ message: "Item removed from wishlist" });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Product reviews endpoint
-  app.get("/api/products/:id/reviews", async (req, res) => {
-    try {
-      const reviews = await storage.getReviewsByProduct(req.params.id);
-      const reviewDTOs = reviews.map(review => mapReviewToDTO(review));
-      res.json(reviewDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Order routes
-  app.get("/api/orders", requireAuth, async (req, res) => {
-    try {
-      let orders;
-      
-      if (req.session.user!.role === "admin") {
-        orders = await storage.getAllOrders();
-      } else if (req.session.user!.role === "vendor") {
-        const vendor = await storage.getVendorByUserId(req.session.user!.id);
-        if (!vendor) {
-          return res.status(403).json({ message: "Vendor not found" });
-        }
-        orders = await storage.getOrdersByVendor(vendor.id);
-      } else {
-        orders = await storage.getOrdersByUser(req.session.user!.id);
-      }
-
-      const orderDTOs = orders.map(order => mapOrderToDTO(order));
-      res.json(orderDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/orders", requireAuth, async (req, res) => {
-    try {
-      const orderData = insertOrderSchema.parse({
-        ...req.body,
-        userId: req.session.user!.id,
-      });
-
-      const order = await storage.createOrder(orderData);
-      
-      // Clear cart after successful order
-      await storage.clearCart(req.session.user!.id);
-      
-      res.status(201).json(mapOrderToDTO(order));
-    } catch (error) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ message: "Validation error", errors: error.errors });
-      }
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.put("/api/orders/:id/status", requireAuth, requireRole(["vendor", "admin"]), async (req, res) => {
-    try {
-      const { status } = req.body;
-      
-      const validStatuses = ["pending", "confirmed", "shipped", "delivered", "cancelled"];
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({ message: "Invalid status" });
-      }
-
-      const updatedOrder = await storage.updateOrderStatus(req.params.id, status);
-      if (!updatedOrder) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-
-      res.json(mapOrderToDTO(updatedOrder));
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/orders/:id/items", requireAuth, async (req, res) => {
-    try {
-      const { id: orderId } = req.params;
-      const userId = req.session.user!.id;
-      
-      // First verify the order belongs to the user or user is admin/vendor
-      const order = await storage.getOrder(orderId);
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
-      }
-      
-      // Check authorization
-      if (req.session.user!.role !== "admin") {
-        if (req.session.user!.role === "vendor") {
-          const vendor = await storage.getVendorByUserId(userId);
-          if (!vendor || order.vendorId !== vendor.id) {
-            return res.status(403).json({ message: "Access denied" });
-          }
-        } else if (order.userId !== userId) {
-          return res.status(403).json({ message: "Access denied" });
-        }
-      }
-      
-      // Get order items with product details
-      const orderItems = await storage.getOrderItemsByOrder(orderId);
-      const orderItemDTOs = [];
-      
-      for (const item of orderItems) {
-        const product = await storage.getProduct(item.productId);
-        const orderItemDTO = {
-          id: item.id,
-          orderId: item.orderId,
-          productId: item.productId,
-          quantity: item.quantity,
-          price: item.price,
-          total: item.total,
-          product: product ? mapProductToDTO(product) : undefined,
-        };
-        orderItemDTOs.push(orderItemDTO);
-      }
-      
-      res.json(orderItemDTOs);
-    } catch (error) {
-      console.error("Error fetching order items:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Categories
-  app.get("/api/categories", async (req, res) => {
-    try {
-      const categories = await storage.getAllCategories();
-      const categoryDTOs = categories.map(category => mapCategoryToDTO(category));
-      res.json(categoryDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Admin routes
-  app.get("/api/admin/users", requireAuth, requireRole(["admin"]), async (req, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      const userDTOs = users.map(user => mapUserToDTO(user));
-      res.json(userDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/admin/vendors", requireAuth, requireRole(["admin"]), async (req, res) => {
-    try {
-      const vendors = await storage.getAllVendors();
-      const vendorDTOs = vendors.map(vendor => mapVendorToDTO(vendor));
-      res.json(vendorDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.put("/api/admin/vendors/:id/approve", requireAuth, requireRole(["admin"]), async (req, res) => {
-    try {
-      const approved = await storage.approveVendor(req.params.id);
-      if (!approved) {
-        return res.status(404).json({ message: "Vendor not found" });
-      }
-      res.json({ message: "Vendor approved successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.put("/api/admin/users/:id/status", requireAuth, requireRole(["admin"]), async (req, res) => {
-    try {
-      const { isActive } = req.body;
-      if (typeof isActive !== 'boolean') {
-        return res.status(400).json({ message: "isActive must be a boolean" });
-      }
-
-      const updatedUser = await storage.updateUser(req.params.id, { isActive });
-      if (!updatedUser) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json({ message: "User status updated successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.delete("/api/admin/users/:id", requireAuth, requireRole(["admin"]), async (req, res) => {
-    try {
-      const deleted = await storage.deleteUser(req.params.id);
-      if (!deleted) {
-        return res.status(404).json({ message: "User not found" });
-      }
-
-      res.json({ message: "User deleted successfully" });
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Reviews endpoints
-  app.get("/api/reviews/recent", async (req, res) => {
-    try {
-      const allUsers = await storage.getAllUsers();
-      const allProducts = await storage.getAllProducts();
-      const allReviews: (ReviewDTO & { user: { id: string; firstName: string; lastName: string }; product: { id: string; name: string } })[] = [];
-
-      // Get all reviews from all users
-      for (const user of allUsers) {
-        const userReviews = await storage.getReviewsByUser(user.id);
-        const reviewsWithDetails = userReviews.map(review => ({
-          ...mapReviewToDTO(review),
-          user: {
-            id: user.id,
-            firstName: user.firstName,
-            lastName: user.lastName,
-          },
-          product: allProducts.find(p => p.id === review.productId) || { id: review.productId, name: 'Unknown Product' }
-        }));
-        allReviews.push(...reviewsWithDetails);
-      }
-
-      // Sort by creation date (newest first) and limit to recent reviews
-      const recentReviews = allReviews
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-        .slice(0, 20);
-
-      // Convert to DTOs but keep the enhanced structure for recent reviews
-      const reviewDTOs = recentReviews.map(review => ({
-        ...review,
-        user: review.user,
-        product: review.product
-      }));
-
-      res.json(reviewDTOs);
-    } catch (error) {
-      console.error("Error fetching recent reviews:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/reviews/product/:productId", async (req, res) => {
-    try {
-      const { productId } = req.params;
-      const reviews = await storage.getReviewsByProduct(productId);
-      const reviewDTOs = reviews.map(review => mapReviewToDTO(review));
-      res.json(reviewDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/reviews/user/:userId", async (req, res) => {
-    try {
-      const { userId } = req.params;
-      const reviews = await storage.getReviewsByUser(userId);
-      const reviewDTOs = reviews.map(review => mapReviewToDTO(review));
-      res.json(reviewDTOs);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Get unreviewed delivered orders for the current user
-  app.get("/api/orders/unreviewed", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.user!.id;
-      
-      // Get all delivered orders for the user
-      const deliveredOrders = await storage.getOrdersByUser(userId);
-      const deliveredOnly = deliveredOrders.filter(order => order.status === "delivered");
-      
-      // Get user's reviews to check which products they've already reviewed
-      const userReviews = await storage.getReviewsByUser(userId);
-      const reviewedProductIds = new Set(userReviews.map(review => review.productId));
-      
-      // Filter orders that contain unreviewed products
-      const unreviewed = [];
-      
-      for (const order of deliveredOnly) {
-        const orderItems = await storage.getOrderItemsByOrder(order.id);
-        const unreviewedProducts = [];
-        
-        for (const item of orderItems) {
-          if (!reviewedProductIds.has(item.productId)) {
-            const product = await storage.getProduct(item.productId);
-            if (product) {
-              const vendor = await storage.getVendor(product.vendorId);
-              unreviewedProducts.push(mapProductToDTO(product, vendor || undefined));
-            }
-          }
-        }
-        
-        if (unreviewedProducts.length > 0) {
-          unreviewed.push({
-            order: mapOrderToDTO(order),
-            products: unreviewedProducts
-          });
-        }
-      }
-      
-      res.json(unreviewed);
-    } catch (error) {
-      console.error("Error fetching unreviewed orders:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.post("/api/reviews", requireAuth, async (req, res) => {
-    try {
-      const userId = req.session.user!.id;
-      
-      // Use Zod schema for validation
-      const reviewData = insertReviewSchema.parse({
-        ...req.body,
-        userId
-      });
-
-      // Additional rating validation
-      if (reviewData.rating < 1 || reviewData.rating > 5) {
-        return res.status(400).json({ message: "Rating must be between 1 and 5" });
-      }
-
-      // Check if user has already reviewed this product
-      const existingReviews = await storage.getReviewsByUser(userId);
-      const hasAlreadyReviewed = existingReviews.some(r => r.productId === reviewData.productId);
-      
-      if (hasAlreadyReviewed) {
-        return res.status(409).json({ 
-          message: "You have already reviewed this product" 
-        });
-      }
-
-      // CRITICAL FIX: Check if user has completed a delivered order containing this SPECIFIC product
-      const userOrders = await storage.getOrdersByUser(userId);
-      let hasVerifiedPurchase = false;
-
-      for (const order of userOrders) {
-        if (order.status === "delivered") {
-          // Get order items for this specific order
-          const orderItems = await storage.getOrderItemsByOrder(order.id);
-          const purchasedThisProduct = orderItems.some((item: { productId: string }) => item.productId === reviewData.productId);
-          
-          if (purchasedThisProduct) {
-            hasVerifiedPurchase = true;
-            break;
-          }
-        }
-      }
-
-      if (!hasVerifiedPurchase) {
-        return res.status(403).json({ 
-          message: "You can only review products you have purchased and received through completed deliveries" 
-        });
-      }
-
-      const review = await storage.createReview(reviewData);
-
-      res.status(201).json(mapReviewToDTO(review));
-    } catch (error: unknown) {
-      if (error instanceof z.ZodError) {
-        return res.status(400).json({ 
-          message: "Invalid review data", 
-          errors: error.errors 
-        });
-      }
-      console.error("Error creating review:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // Public stats endpoint for homepage
-  app.get("/api/stats", async (req, res) => {
-    try {
-      // Get real data from database
-      const users = await storage.getAllUsers();
-      const vendors = await storage.getAllVendors();
-      const products = await storage.getAllProducts();
-      
-      const stats = {
-        totalUsers: users.length, // Total users including customers and vendors
-        activeStores: vendors.filter(v => v.isApproved).length, // Active approved stores
-        productsListed: products.filter(p => p.isActive).length, // Active products only
-      };
-
-      res.json(stats);
-    } catch (error) {
-      console.error("Stats endpoint error:", error);
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  app.get("/api/admin/stats", requireAuth, requireRole(["admin"]), async (req, res) => {
-    try {
-      const users = await storage.getAllUsers();
-      const vendors = await storage.getAllVendors();
-      const products = await storage.getAllProducts();
-      const orders = await storage.getAllOrders();
-
-      const stats = {
-        totalUsers: users.filter(u => u.role === "user").length,
-        totalVendors: vendors.length, // All vendors are automatically approved
-        totalProducts: products.length,
-        totalOrders: orders.length,
-        revenue: orders.reduce((sum, order) => sum + parseFloat(order.total), 0),
-      };
-
-      res.json(stats);
-    } catch (error) {
-      res.status(500).json({ message: "Internal server error" });
-    }
-  });
-
-  // AI Chat endpoint
-  app.post("/api/ai/chat", async (req, res) => {
-    try {
-      const { message, history } = req.body;
-      
-      if (!message || typeof message !== 'string' || message.trim().length === 0) {
-        return res.status(400).json({ message: "Message is required" });
-      }
-
-      if (message.length > 1000) {
-        return res.status(400).json({ message: "Message too long" });
-      }
-
-      const chatRequest: ChatRequest = {
-        message: message.trim(),
-        history: Array.isArray(history) ? history.slice(-5) : []
-      };
-
-      const response = await getChatResponse(chatRequest);
-      res.json(response);
-    } catch (error) {
-      console.error("AI Chat error:", error);
-      res.status(500).json({ 
-        message: "AI service temporarily unavailable", 
-        suggestedLinks: [
-          { text: "Contact Support", url: "/contact", description: "Get help from our team" },
-          { text: "FAQ", url: "/faq", description: "Find quick answers" }
-        ]
-      });
-    }
-  });
-
-  // Stripe payment route for one-time payments
-  app.post("/api/create-payment-intent", async (req, res) => {
-    try {
-      const { amount, orderId } = req.body;
-      
-      if (!amount || isNaN(amount)) {
-        return res.status(400).json({ message: "Valid amount is required" });
-      }
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // Convert NPR to paisa (smallest unit)
-        currency: "npr", // Nepali Rupees
-        metadata: {
-          orderId: orderId || '',
-        },
-      });
-      
-      res.json({ clientSecret: paymentIntent.client_secret });
-    } catch (error: any) {
-      console.error("Stripe error:", error);
-      res.status(500).json({ 
-        message: "Error creating payment intent: " + (error.message || "Unknown error")
-      });
-    }
-  });
-
-  // Stripe webhook endpoint
-  app.post("/api/webhooks/stripe", express.raw({ type: 'application/json' }), async (req, res) => {
-    const sig = req.headers['stripe-signature'];
-    let event;
-
-    try {
-      event = stripe.webhooks.constructEvent(req.body, sig!, process.env.STRIPE_WEBHOOK_SECRET || '');
-    } catch (err: any) {
-      console.log(`Webhook signature verification failed.`, err.message);
-      return res.status(400).send(`Webhook Error: ${err.message}`);
-    }
-
-    // Handle the event
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        const paymentIntent = event.data.object;
-        console.log('Payment succeeded:', paymentIntent.id);
-        // Update order status in your database
-        break;
-      case 'payment_intent.payment_failed':
-        console.log('Payment failed:', event.data.object);
-        break;
-      default:
-        console.log(`Unhandled event type ${event.type}`);
-    }
-
-    res.json({ received: true });
-  });
-
-  const httpServer = createServer(app);
-  return httpServer;
+  } else {
+    console.log("OpenAI API key not found or invalid - chatbot will use fallback responses");
+  }
+} catch (error) {
+  console.log("OpenAI initialization failed - chatbot will use fallback responses");
 }
+
+// Authentication middleware
+const requireAuth = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.status(401).json({ message: "Authentication required" });
+};
+
+// Admin middleware
+const requireAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.isAuthenticated() && req.user && (req.user as User).role === 'admin') {
+    return next();
+  }
+  res.status(403).json({ message: "Admin access required" });
+};
+
+// Vendor middleware
+const requireVendor = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (req.isAuthenticated() && req.user && ['vendor', 'admin'].includes((req.user as User).role)) {
+    return next();
+  }
+  res.status(403).json({ message: "Vendor access required" });
+};
+
+// Passport configuration
+passport.use(new LocalStrategy(
+  { usernameField: 'email' },
+  async (email: string, password: string, done) => {
+    try {
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return done(null, false, { message: 'Invalid credentials' });
+      }
+
+      const isValidPassword = await bcrypt.compare(password, user.password);
+      if (!isValidPassword) {
+        return done(null, false, { message: 'Invalid credentials' });
+      }
+
+      return done(null, user);
+    } catch (error) {
+      return done(error);
+    }
+  }
+));
+
+passport.serializeUser((user: any, done) => {
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (id: string, done) => {
+  try {
+    const user = await storage.getUserById(id);
+    done(null, user);
+  } catch (error) {
+    done(error);
+  }
+});
+
+// Auth routes
+router.post("/api/auth/register", async (req, res) => {
+  try {
+    const result = insertUserSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const { name, email, password, role = 'customer' } = result.data;
+
+    const existingUser = await storage.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const newUser = await storage.createUser({
+      name,
+      email,
+      password: hashedPassword,
+      role: role as 'customer' | 'vendor' | 'admin'
+    });
+
+    req.login(newUser, (err) => {
+      if (err) {
+        return res.status(500).json({ message: "Login failed" });
+      }
+      const userResponse = { ...newUser };
+      delete (userResponse as any).password;
+      res.json({ user: userResponse });
+    });
+  } catch (error) {
+    console.error("Registration error:", error);
+    res.status(500).json({ message: "Registration failed" });
+  }
+});
+
+router.post("/api/auth/login", (req, res, next) => {
+  passport.authenticate('local', (err: any, user: User | false, info: any) => {
+    if (err) {
+      return res.status(500).json({ message: "Authentication error" });
+    }
+    if (!user) {
+      return res.status(401).json({ message: info?.message || "Invalid credentials" });
+    }
+
+    req.login(user, (loginErr) => {
+      if (loginErr) {
+        return res.status(500).json({ message: "Login failed" });
+      }
+      const userResponse = { ...user };
+      delete (userResponse as any).password;
+      res.json({ user: userResponse });
+    });
+  })(req, res, next);
+});
+
+router.post("/api/auth/logout", (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      return res.status(500).json({ message: "Logout failed" });
+    }
+    res.json({ message: "Logout successful" });
+  });
+});
+
+router.get("/api/auth/me", (req, res) => {
+  if (req.isAuthenticated() && req.user) {
+    const userResponse = { ...req.user as User };
+    delete (userResponse as any).password;
+    res.json({ user: userResponse });
+  } else {
+    res.status(401).json({ message: "Not authenticated" });
+  }
+});
+
+// Product routes
+router.get("/api/products", async (req, res) => {
+  try {
+    const { search, category, vendor } = req.query;
+    let products = await storage.getAllProducts();
+
+    if (search) {
+      const searchTerm = (search as string).toLowerCase();
+      products = products.filter(product => 
+        product.name.toLowerCase().includes(searchTerm) ||
+        product.description.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    if (category && category !== 'all') {
+      products = products.filter(product => product.categoryId === category);
+    }
+
+    if (vendor) {
+      products = products.filter(product => product.vendorId === vendor);
+    }
+
+    res.json(products);
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    res.status(500).json({ message: "Failed to fetch products" });
+  }
+});
+
+router.get("/api/products/:id", async (req, res) => {
+  try {
+    const product = await storage.getProductById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+    res.json(product);
+  } catch (error) {
+    console.error("Error fetching product:", error);
+    res.status(500).json({ message: "Failed to fetch product" });
+  }
+});
+
+router.post("/api/products", requireVendor, upload.array('images', 5), async (req, res) => {
+  try {
+    const productData = {
+      ...req.body,
+      colors: req.body.colors ? JSON.parse(req.body.colors) : [],
+      sizes: req.body.sizes ? JSON.parse(req.body.sizes) : [],
+      tags: req.body.tags ? JSON.parse(req.body.tags) : [],
+      images: (req.files as Express.Multer.File[])?.map(file => `/uploads/${file.filename}`) || []
+    };
+
+    const result = insertProductSchema.safeParse({
+      ...productData,
+      vendorId: (req.user as User).id
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const newProduct = await storage.createProduct(result.data);
+    res.status(201).json(newProduct);
+  } catch (error) {
+    console.error("Error creating product:", error);
+    res.status(500).json({ message: "Failed to create product" });
+  }
+});
+
+router.put("/api/products/:id", requireVendor, upload.array('images', 5), async (req, res) => {
+  try {
+    const existingProduct = await storage.getProductById(req.params.id);
+    if (!existingProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (existingProduct.vendorId !== (req.user as User).id && (req.user as User).role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to edit this product" });
+    }
+
+    const productData = {
+      ...req.body,
+      colors: req.body.colors ? JSON.parse(req.body.colors) : existingProduct.colors,
+      sizes: req.body.sizes ? JSON.parse(req.body.sizes) : existingProduct.sizes,
+      tags: req.body.tags ? JSON.parse(req.body.tags) : existingProduct.tags,
+    };
+
+    if (req.files && (req.files as Express.Multer.File[]).length > 0) {
+      productData.images = (req.files as Express.Multer.File[]).map(file => `/uploads/${file.filename}`);
+    }
+
+    const result = insertProductSchema.partial().safeParse(productData);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const updatedProduct = await storage.updateProduct(req.params.id, result.data);
+    res.json(updatedProduct);
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json({ message: "Failed to update product" });
+  }
+});
+
+router.delete("/api/products/:id", requireVendor, async (req, res) => {
+  try {
+    const existingProduct = await storage.getProductById(req.params.id);
+    if (!existingProduct) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (existingProduct.vendorId !== (req.user as User).id && (req.user as User).role !== 'admin') {
+      return res.status(403).json({ message: "Not authorized to delete this product" });
+    }
+
+    await storage.deleteProduct(req.params.id);
+    res.json({ message: "Product deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting product:", error);
+    res.status(500).json({ message: "Failed to delete product" });
+  }
+});
+
+// Category routes
+router.get("/api/categories", async (req, res) => {
+  try {
+    const categories = await storage.getAllCategories();
+    res.json(categories);
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    res.status(500).json({ message: "Failed to fetch categories" });
+  }
+});
+
+router.post("/api/categories", requireAdmin, async (req, res) => {
+  try {
+    const result = insertCategorySchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const newCategory = await storage.createCategory(result.data);
+    res.status(201).json(newCategory);
+  } catch (error) {
+    console.error("Error creating category:", error);
+    res.status(500).json({ message: "Failed to create category" });
+  }
+});
+
+// Cart routes
+router.get("/api/cart", requireAuth, async (req, res) => {
+  try {
+    const cartItems = await storage.getCartItems((req.user as User).id);
+    res.json(cartItems);
+  } catch (error) {
+    console.error("Error fetching cart:", error);
+    res.status(500).json({ message: "Failed to fetch cart" });
+  }
+});
+
+router.post("/api/cart", requireAuth, async (req, res) => {
+  try {
+    const { productId, quantity = 1 } = req.body;
+    if (!productId || quantity < 1) {
+      return res.status(400).json({ message: "Invalid product or quantity" });
+    }
+
+    const product = await storage.getProductById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const cartItem = await storage.addToCart({
+      userId: (req.user as User).id,
+      productId,
+      quantity
+    });
+
+    res.status(201).json(cartItem);
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+    res.status(500).json({ message: "Failed to add to cart" });
+  }
+});
+
+router.put("/api/cart/:id", requireAuth, async (req, res) => {
+  try {
+    const { quantity } = req.body;
+    if (!quantity || quantity < 1) {
+      return res.status(400).json({ message: "Invalid quantity" });
+    }
+
+    const cartItem = await storage.updateCartItem(req.params.id, quantity);
+    res.json(cartItem);
+  } catch (error) {
+    console.error("Error updating cart item:", error);
+    res.status(500).json({ message: "Failed to update cart item" });
+  }
+});
+
+router.delete("/api/cart/:id", requireAuth, async (req, res) => {
+  try {
+    await storage.removeFromCart(req.params.id);
+    res.json({ message: "Item removed from cart" });
+  } catch (error) {
+    console.error("Error removing from cart:", error);
+    res.status(500).json({ message: "Failed to remove from cart" });
+  }
+});
+
+// Wishlist routes
+router.get("/api/wishlist", requireAuth, async (req, res) => {
+  try {
+    const wishlistItems = await storage.getWishlistItems((req.user as User).id);
+    res.json(wishlistItems);
+  } catch (error) {
+    console.error("Error fetching wishlist:", error);
+    res.status(500).json({ message: "Failed to fetch wishlist" });
+  }
+});
+
+router.post("/api/wishlist", requireAuth, async (req, res) => {
+  try {
+    const { productId } = req.body;
+    if (!productId) {
+      return res.status(400).json({ message: "Product ID is required" });
+    }
+
+    const product = await storage.getProductById(productId);
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    const wishlistItem = await storage.addToWishlist({
+      userId: (req.user as User).id,
+      productId
+    });
+
+    res.status(201).json(wishlistItem);
+  } catch (error) {
+    console.error("Error adding to wishlist:", error);
+    res.status(500).json({ message: "Failed to add to wishlist" });
+  }
+});
+
+router.delete("/api/wishlist/:productId", requireAuth, async (req, res) => {
+  try {
+    await storage.removeFromWishlist((req.user as User).id, req.params.productId);
+    res.json({ message: "Item removed from wishlist" });
+  } catch (error) {
+    console.error("Error removing from wishlist:", error);
+    res.status(500).json({ message: "Failed to remove from wishlist" });
+  }
+});
+
+// Review routes
+router.get("/api/products/:productId/reviews", async (req, res) => {
+  try {
+    const reviews = await storage.getProductReviews(req.params.productId);
+    res.json(reviews);
+  } catch (error) {
+    console.error("Error fetching reviews:", error);
+    res.status(500).json({ message: "Failed to fetch reviews" });
+  }
+});
+
+router.get("/api/reviews/recent", async (req, res) => {
+  try {
+    const reviews = await storage.getRecentReviews();
+    res.json(reviews);
+  } catch (error) {
+    console.error("Error fetching recent reviews:", error);
+    res.status(500).json({ message: "Failed to fetch recent reviews" });
+  }
+});
+
+router.post("/api/reviews", requireAuth, async (req, res) => {
+  try {
+    const result = insertReviewSchema.safeParse({
+      ...req.body,
+      userId: (req.user as User).id
+    });
+
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const review = await storage.createReview(result.data);
+    res.status(201).json(review);
+  } catch (error) {
+    console.error("Error creating review:", error);
+    res.status(500).json({ message: "Failed to create review" });
+  }
+});
+
+// Order routes
+router.get("/api/orders", requireAuth, async (req, res) => {
+  try {
+    const orders = await storage.getUserOrders((req.user as User).id);
+    res.json(orders);
+  } catch (error) {
+    console.error("Error fetching orders:", error);
+    res.status(500).json({ message: "Failed to fetch orders" });
+  }
+});
+
+router.post("/api/orders", requireAuth, async (req, res) => {
+  try {
+    const { items, shippingAddress, paymentMethod } = req.body;
+    
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ message: "Order items are required" });
+    }
+
+    // Calculate total
+    let totalAmount = 0;
+    for (const item of items) {
+      const product = await storage.getProductById(item.productId);
+      if (!product) {
+        return res.status(404).json({ message: `Product ${item.productId} not found` });
+      }
+      const price = parseFloat(product.discountPrice || product.price);
+      totalAmount += price * item.quantity;
+    }
+
+    const order = await storage.createOrder({
+      userId: (req.user as User).id,
+      items,
+      totalAmount: totalAmount.toString(),
+      status: 'pending',
+      shippingAddress,
+      paymentMethod
+    });
+
+    res.status(201).json(order);
+  } catch (error) {
+    console.error("Error creating order:", error);
+    res.status(500).json({ message: "Failed to create order" });
+  }
+});
+
+// Stripe payment routes
+router.post("/api/create-payment-intent", requireAuth, async (req, res) => {
+  try {
+    const { amount, currency = "npr", orderId } = req.body;
+
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ message: "Invalid amount" });
+    }
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(amount * 100), // Convert to cents
+      currency: currency.toLowerCase(),
+      metadata: {
+        userId: (req.user as User).id,
+        orderId: orderId || '',
+      },
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      paymentIntentId: paymentIntent.id,
+    });
+  } catch (error) {
+    console.error("Stripe payment intent error:", error);
+    res.status(500).json({ message: "Payment processing failed" });
+  }
+});
+
+router.post("/api/confirm-payment", requireAuth, async (req, res) => {
+  try {
+    const { paymentIntentId, orderId } = req.body;
+
+    if (!paymentIntentId) {
+      return res.status(400).json({ message: "Payment intent ID is required" });
+    }
+
+    // Retrieve payment intent from Stripe
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (paymentIntent.status === 'succeeded') {
+      // Update order status
+      if (orderId) {
+        await storage.updateOrderStatus(orderId, 'paid');
+      }
+      
+      res.json({ success: true, status: paymentIntent.status });
+    } else {
+      res.status(400).json({ message: "Payment not completed", status: paymentIntent.status });
+    }
+  } catch (error) {
+    console.error("Payment confirmation error:", error);
+    res.status(500).json({ message: "Payment confirmation failed" });
+  }
+});
+
+// Vendor settings routes
+router.get("/api/vendor/settings", requireVendor, async (req, res) => {
+  try {
+    const settings = await storage.getVendorSettings((req.user as User).id);
+    res.json(settings || {});
+  } catch (error) {
+    console.error("Error fetching vendor settings:", error);
+    res.status(500).json({ message: "Failed to fetch vendor settings" });
+  }
+});
+
+router.put("/api/vendor/settings", requireVendor, async (req, res) => {
+  try {
+    const settings = await storage.updateVendorSettings((req.user as User).id, req.body);
+    res.json(settings);
+  } catch (error) {
+    console.error("Error updating vendor settings:", error);
+    res.status(500).json({ message: "Failed to update vendor settings" });
+  }
+});
+
+router.put("/api/vendor/notifications", requireVendor, async (req, res) => {
+  try {
+    const settings = await storage.updateVendorSettings((req.user as User).id, req.body);
+    res.json(settings);
+  } catch (error) {
+    console.error("Error updating notification settings:", error);
+    res.status(500).json({ message: "Failed to update notification settings" });
+  }
+});
+
+router.put("/api/vendor/payment", requireVendor, async (req, res) => {
+  try {
+    const settings = await storage.updateVendorSettings((req.user as User).id, req.body);
+    res.json(settings);
+  } catch (error) {
+    console.error("Error updating payment settings:", error);
+    res.status(500).json({ message: "Failed to update payment settings" });
+  }
+});
+
+// Upload routes
+router.post("/api/upload/review-image", requireAuth, upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No image uploaded" });
+    }
+    res.json({ imagePath: `/uploads/${req.file.filename}` });
+  } catch (error) {
+    console.error("Review image upload error:", error);
+    res.status(500).json({ message: "Image upload failed" });
+  }
+});
+
+router.post("/api/upload/store-logo", requireVendor, upload.single('logo'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No logo uploaded" });
+    }
+    res.json({ logoPath: `/uploads/${req.file.filename}` });
+  } catch (error) {
+    console.error("Store logo upload error:", error);
+    res.status(500).json({ message: "Logo upload failed" });
+  }
+});
+
+router.delete("/api/upload/review-image", requireAuth, async (req, res) => {
+  try {
+    const { imagePath } = req.body;
+    if (imagePath && imagePath.startsWith('/uploads/')) {
+      const filePath = path.join(process.cwd(), 'uploads', path.basename(imagePath));
+      await fs.unlink(filePath);
+    }
+    res.json({ message: "Image deleted successfully" });
+  } catch (error) {
+    console.error("Image deletion error:", error);
+    res.status(500).json({ message: "Failed to delete image" });
+  }
+});
+
+// Statistics route
+router.get("/api/stats", async (req, res) => {
+  try {
+    const stats = await storage.getStats();
+    res.json(stats);
+  } catch (error) {
+    console.error("Error fetching stats:", error);
+    res.status(500).json({ message: "Failed to fetch stats" });
+  }
+});
+
+// Serve uploaded files
+router.use('/uploads', express.static('uploads'));
+
+export async function registerRoutes(app: express.Application) {
+  // Session middleware
+  app.use(session({
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      secure: false, // Set to true in production with HTTPS
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    },
+  }));
+
+  // Passport middleware
+  app.use(passport.initialize());
+  app.use(passport.session());
+
+  // Use our routes
+  app.use(router);
+
+  // Return HTTP server
+  const { createServer } = await import('node:http');
+  return createServer(app);
+}
+
+export default router;

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Star, X } from "lucide-react";
+import { Star, X, Upload, Image as ImageIcon } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import type { ProductDTO } from "@shared/schema";
@@ -19,11 +19,76 @@ export default function ReviewForm({ product, orderId, onClose, onSuccess }: Rev
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [comment, setComment] = useState("");
+  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const handleImageUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
+
+    setUploadingImages(true);
+    const newImages = [...imageUrls];
+
+    try {
+      for (let i = 0; i < files.length && newImages.length < 5; i++) {
+        const file = files[i];
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const response = await fetch('/api/upload/review-image', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          newImages.push(data.imagePath);
+        } else {
+          const errorData = await response.json();
+          toast({
+            title: "Upload failed",
+            description: errorData.message || "Failed to upload image",
+            variant: "destructive"
+          });
+        }
+      }
+
+      setImageUrls(newImages);
+    } catch (error) {
+      toast({
+        title: "Upload failed",
+        description: "An error occurred while uploading images",
+        variant: "destructive"
+      });
+    } finally {
+      setUploadingImages(false);
+    }
+  };
+
+  const removeImage = async (index: number) => {
+    const imagePath = imageUrls[index];
+    
+    try {
+      if (imagePath.startsWith('/uploads/')) {
+        await fetch('/api/upload/review-image', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imagePath }),
+          credentials: 'include',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to delete image from server:', error);
+    }
+
+    const newImages = imageUrls.filter((_, i) => i !== index);
+    setImageUrls(newImages);
+  };
+
   const submitReviewMutation = useMutation({
-    mutationFn: async (reviewData: { productId: string; vendorId: string; rating: number; comment?: string }) => {
+    mutationFn: async (reviewData: { productId: string; vendorId: string; rating: number; comment?: string; images?: string[] }) => {
       const response = await fetch("/api/reviews", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,6 +140,7 @@ export default function ReviewForm({ product, orderId, onClose, onSuccess }: Rev
       vendorId: product.vendorId,
       rating,
       comment: comment.trim() || undefined,
+      images: imageUrls,
     });
   };
 
@@ -141,6 +207,61 @@ export default function ReviewForm({ product, orderId, onClose, onSuccess }: Rev
             <p className="text-xs text-muted-foreground mt-1">
               {comment.length}/500 characters
             </p>
+          </div>
+
+          {/* Image Upload Section */}
+          <div className="space-y-3">
+            <Label className="text-sm font-medium">
+              Photos (optional)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Add up to 5 photos to help others see your experience
+            </p>
+            
+            <div className="flex flex-wrap gap-3">
+              {/* Image Preview */}
+              {imageUrls.map((url, index) => (
+                <div
+                  key={index}
+                  className="relative group animate-fade-in"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <img
+                    src={url}
+                    alt={`Review image ${index + 1}`}
+                    className="w-16 h-16 object-cover rounded-lg border-2 border-border transition-all duration-200 group-hover:scale-105"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeImage(index)}
+                    className="absolute -top-1 -right-1 p-0.5 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-110"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+
+              {/* Upload Button */}
+              {imageUrls.length < 5 && (
+                <label className="w-16 h-16 border-2 border-dashed border-muted-foreground/25 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-primary hover:bg-muted/50 transition-all duration-200 hover:scale-105">
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => handleImageUpload(e.target.files)}
+                    className="hidden"
+                  />
+                  {uploadingImages ? (
+                    <div className="animate-spin w-4 h-4 border-2 border-primary border-t-transparent rounded-full" />
+                  ) : (
+                    <>
+                      <ImageIcon className="w-4 h-4 text-muted-foreground mb-0.5" />
+                      <span className="text-xs text-muted-foreground">Add</span>
+                    </>
+                  )}
+                </label>
+              )}
+            </div>
           </div>
 
           {/* Submit Button */}

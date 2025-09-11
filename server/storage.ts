@@ -346,10 +346,41 @@ export class MemStorage implements IStorage {
   private products: Map<string, Product> = new Map();
   private carts: Map<string, Cart> = new Map();
   private orders: Map<string, Order> = new Map();
+  private vendorSettings: Map<string, any> = new Map();
   private reviews: Map<string, Review> = new Map();
   private coupons: Map<string, Coupon> = new Map();
   private categories: Map<string, Category> = new Map();
   private orderItems: Map<string, OrderItem> = new Map();
+
+  // Vendor Settings methods
+  async getVendorSettings(vendorId: string): Promise<any> {
+    return this.vendorSettings.get(vendorId) || {
+      storeName: "",
+      storeDescription: "",
+      contactEmail: "",
+      contactPhone: "",
+      address: "",
+      website: "",
+      logo: "",
+      emailNotifications: true,
+      smsNotifications: false,
+      orderNotifications: true,
+      reviewNotifications: true,
+      promotionalEmails: false,
+      paypalEmail: "",
+      bankAccountNumber: "",
+      bankRoutingNumber: "",
+      stripeAccountId: "",
+    };
+  }
+
+  async updateVendorSettings(vendorId: string, settings: any): Promise<any> {
+    const existingSettings = await this.getVendorSettings(vendorId);
+    const updatedSettings = { ...existingSettings, ...settings };
+    this.vendorSettings.set(vendorId, updatedSettings);
+    return updatedSettings;
+  }
+
   private wishlists: Map<string, Wishlist> = new Map();
 
   constructor() {

@@ -23,6 +23,7 @@ import VendorGuide from "@/pages/vendor-guide";
 import TechnicalDocs from "@/pages/docs";
 import UserDashboard from "@/pages/user-dashboard";
 import VendorDashboard from "@/pages/vendor-dashboard";
+import VendorSettings from "@/pages/vendor-settings";
 import AdminDashboard from "@/pages/admin-dashboard";
 import ProductDetails from "@/pages/product-details";
 import ProtectedRoute from "@/components/protected-route";
@@ -78,6 +79,12 @@ function AppContent() {
         <Route path="/dashboard/vendor">
           <ProtectedRoute allowedRoles={["vendor"]}>
             <VendorDashboard />
+          </ProtectedRoute>
+        </Route>
+        
+        <Route path="/vendor/settings">
+          <ProtectedRoute allowedRoles={["vendor"]}>
+            <VendorSettings />
           </ProtectedRoute>
         </Route>
         

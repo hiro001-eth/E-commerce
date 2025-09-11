@@ -138,6 +138,7 @@ export const reviews = pgTable("reviews", {
   vendorId: varchar("vendor_id").notNull().references(() => vendors.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
+  images: text("images").array(),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
