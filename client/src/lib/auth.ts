@@ -21,6 +21,11 @@ export const authAPI = {
     return response.json();
   },
 
+  adminLogin: async (data: { username: string; password: string }) => {
+    const response = await apiRequest("POST", "/api/auth/admin-login", data);
+    return response.json();
+  },
+
   register: async (data: RegisterData) => {
     const response = await apiRequest("POST", "/api/auth/register", data);
     return response.json();

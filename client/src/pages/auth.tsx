@@ -104,10 +104,30 @@ export default function Auth() {
     registerMutation.mutate(data);
   };
 
+  // Admin login mutation
+  const adminLoginMutation = useMutation({
+    mutationFn: authAPI.adminLogin,
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({
+        title: "Admin access granted!",
+        description: "Welcome to the admin dashboard.",
+      });
+      setLocation("/dashboard/admin");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Admin login failed",
+        description: error.message || "Invalid admin credentials",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Admin quick login
   const handleAdminLogin = () => {
-    loginMutation.mutate({
-      email: "admin@localhost",
+    adminLoginMutation.mutate({
+      username: "admin",
       password: "admin123",
     });
   };
@@ -174,6 +194,23 @@ export default function Auth() {
                   </Button>
                 </form>
 
+                {/* Admin Quick Login */}
+                <div className="mt-6 pt-6 border-t border-border">
+                  <div className="text-center">
+                    <p className="text-sm text-muted-foreground mb-3">Administrator Access</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAdminLogin}
+                      disabled={adminLoginMutation.isPending}
+                      data-testid="button-admin-login"
+                      className="flex items-center space-x-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>{adminLoginMutation.isPending ? "Logging in..." : "Admin Login"}</span>
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
