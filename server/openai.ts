@@ -3,16 +3,18 @@ import OpenAI from "openai";
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
 let openai: OpenAI | null = null;
 
-// Initialize OpenAI only if API key is available
-if (process.env.OPENAI_API_KEY) {
+// Initialize OpenAI only if API key is available and valid
+const apiKey = process.env.OPENAI_API_KEY?.trim();
+if (apiKey && apiKey.length > 10) {
   try {
-    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    openai = new OpenAI({ apiKey: apiKey });
+    console.log("OpenAI client initialized successfully");
   } catch (error) {
     console.warn("Failed to initialize OpenAI client:", error);
     openai = null;
   }
 } else {
-  console.log("OpenAI API key not found - chatbot will use fallback responses");
+  console.log("OpenAI API key not found or invalid - chatbot will use fallback responses");
 }
 
 export interface ChatRequest {
