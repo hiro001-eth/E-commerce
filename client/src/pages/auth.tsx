@@ -12,7 +12,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { authAPI } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
-import { User, Store, Settings } from "lucide-react";
+import { User, Store } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -104,33 +104,6 @@ export default function Auth() {
     registerMutation.mutate(data);
   };
 
-  // Admin login mutation
-  const adminLoginMutation = useMutation({
-    mutationFn: authAPI.adminLogin,
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
-      toast({
-        title: "Admin access granted!",
-        description: "Welcome to the admin dashboard.",
-      });
-      setLocation("/dashboard/admin");
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Admin login failed",
-        description: error.message || "Invalid admin credentials",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Admin quick login
-  const handleAdminLogin = () => {
-    adminLoginMutation.mutate({
-      username: "admin",
-      password: "admin123",
-    });
-  };
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -194,23 +167,6 @@ export default function Auth() {
                   </Button>
                 </form>
 
-                {/* Admin Quick Login */}
-                <div className="mt-6 pt-6 border-t border-border">
-                  <div className="text-center">
-                    <p className="text-sm text-muted-foreground mb-3">Administrator Access</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAdminLogin}
-                      disabled={adminLoginMutation.isPending}
-                      data-testid="button-admin-login"
-                      className="flex items-center space-x-2"
-                    >
-                      <Settings className="w-4 h-4" />
-                      <span>{adminLoginMutation.isPending ? "Logging in..." : "Admin Login"}</span>
-                    </Button>
-                  </div>
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
