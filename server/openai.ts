@@ -1,7 +1,19 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+let openai: OpenAI | null = null;
+
+// Initialize OpenAI only if API key is available
+if (process.env.OPENAI_API_KEY) {
+  try {
+    openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  } catch (error) {
+    console.warn("Failed to initialize OpenAI client:", error);
+    openai = null;
+  }
+} else {
+  console.log("OpenAI API key not found - chatbot will use fallback responses");
+}
 
 export interface ChatRequest {
   message: string;
@@ -139,9 +151,24 @@ function findRelevantContent(query: string): Array<{
 }
 
 export async function getChatResponse(request: ChatRequest): Promise<ChatResponse> {
+  const { message, history = [] } = request;
+  
+  // Find relevant links based on the user's message
+  const suggestedLinks = findRelevantContent(message);
+  
+  // If OpenAI is not available, provide fallback response
+  if (!openai) {
+    const fallbackResponse = getFallbackResponse(message);
+    return {
+      message: fallbackResponse,
+      suggestedLinks: suggestedLinks.length > 0 ? suggestedLinks : [
+        { text: "Contact Support", url: "/contact", description: "Get help from our team" },
+        { text: "FAQ", url: "/faq", description: "Find quick answers" }
+      ]
+    };
+  }
+  
   try {
-    const { message, history = [] } = request;
-    
     // Build context from knowledge base
     const relevantFAQs = DOKAN_KNOWLEDGE.faqs
       .filter(faq => 
@@ -193,9 +220,6 @@ Respond in a natural, conversational way. Focus on solving the user's problem.`;
     const assistantMessage = completion.choices[0]?.message?.content || 
       "I'm sorry, I couldn't process your request right now. Please try again or contact our support team.";
 
-    // Find relevant links based on the user's message
-    const suggestedLinks = findRelevantContent(message);
-
     return {
       message: assistantMessage,
       suggestedLinks
@@ -204,14 +228,46 @@ Respond in a natural, conversational way. Focus on solving the user's problem.`;
     console.error("OpenAI API error:", error);
     
     // Fallback response with basic help
-    const fallbackLinks = findRelevantContent(request.message);
+    const fallbackResponse = getFallbackResponse(message);
     
     return {
-      message: "I'm experiencing some technical difficulties right now. Here are some helpful links that might assist you, or you can contact our support team directly.",
-      suggestedLinks: fallbackLinks.length > 0 ? fallbackLinks : [
+      message: fallbackResponse,
+      suggestedLinks: suggestedLinks.length > 0 ? suggestedLinks : [
         { text: "Contact Support", url: "/contact", description: "Get help from our team" },
         { text: "FAQ", url: "/faq", description: "Find quick answers" }
       ]
     };
   }
+}
+
+function getFallbackResponse(message: string): string {
+  const lowerMessage = message.toLowerCase();
+  
+  // Check for common queries and provide relevant responses
+  if (lowerMessage.includes('login') || lowerMessage.includes('sign in') || lowerMessage.includes("can't log in")) {
+    return "If you're having trouble logging in, make sure you're using the correct email and password. You can also try clearing your browser cache. If you still need help, visit our contact page.";
+  }
+  
+  if (lowerMessage.includes('vendor') || lowerMessage.includes('sell') || lowerMessage.includes('become')) {
+    return "To become a vendor on Dokan, you'll need to create an account first, then apply for vendor status in your dashboard. Check out our vendor guide for complete instructions.";
+  }
+  
+  if (lowerMessage.includes('order') || lowerMessage.includes('track') || lowerMessage.includes('purchase')) {
+    return "You can track your orders by logging into your account and visiting your user dashboard. There you'll see all your orders and their current status.";
+  }
+  
+  if (lowerMessage.includes('return') || lowerMessage.includes('refund')) {
+    return "You can return most items within 30 days of delivery. Check our return policy for full details or start a return from your dashboard.";
+  }
+  
+  if (lowerMessage.includes('product') || lowerMessage.includes('add') || lowerMessage.includes('upload')) {
+    return "Vendors can add products from their vendor dashboard. You'll need to be approved as a vendor first. Check the vendor guide for detailed instructions.";
+  }
+  
+  if (lowerMessage.includes('help') || lowerMessage.includes('support') || lowerMessage.includes('contact')) {
+    return "I'm here to help! You can browse our FAQ for quick answers or contact our support team directly if you need more assistance.";
+  }
+  
+  // Default response
+  return "I'm here to help you with Dokan marketplace! I can assist with account issues, vendor applications, orders, returns, and general navigation. What would you like to know?";
 }
