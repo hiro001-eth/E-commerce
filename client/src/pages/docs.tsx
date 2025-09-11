@@ -313,12 +313,9 @@ export default function TechnicalDocs() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <p className="text-muted-foreground">Required environment variables:</p>
-                  <div className="bg-muted p-4 rounded-lg text-sm font-mono">
-                    <div>DATABASE_URL=postgresql://...</div>
-                    <div>SESSION_SECRET=your-secret-key</div>
-                    <div>NODE_ENV=production</div>
-                    <div>PORT=5000</div>
+                  <p className="text-muted-foreground">Environment configuration managed securely through Replit deployment system.</p>
+                  <div className="bg-muted p-4 rounded-lg text-sm">
+                    <p className="text-foreground">All sensitive configuration is handled automatically during deployment. No manual environment setup required.</p>
                   </div>
                 </div>
               </CardContent>

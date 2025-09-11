@@ -1242,15 +1242,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Public stats endpoint for homepage
   app.get("/api/stats", async (req, res) => {
     try {
-      // Return the real data numbers as requested
+      // Get real data from database
+      const users = await storage.getAllUsers();
+      const vendors = await storage.getAllVendors();
+      const products = await storage.getAllProducts();
+      
       const stats = {
-        totalUsers: 12543,
-        activeStores: 1247,
-        productsListed: 45692,
+        totalUsers: users.length, // Total users including customers and vendors
+        activeStores: vendors.filter(v => v.isApproved).length, // Active approved stores
+        productsListed: products.filter(p => p.isActive).length, // Active products only
       };
 
       res.json(stats);
     } catch (error) {
+      console.error("Stats endpoint error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });
