@@ -24,6 +24,7 @@ import TechnicalDocs from "@/pages/docs";
 import UserDashboard from "@/pages/user-dashboard";
 import VendorDashboard from "@/pages/vendor-dashboard";
 import AdminDashboard from "@/pages/admin-dashboard";
+import ProductDetails from "@/pages/product-details";
 import ProtectedRoute from "@/components/protected-route";
 import NotFound from "@/pages/not-found";
 import AIChatbot from "@/components/ai-chatbot";
@@ -51,6 +52,7 @@ function AppContent() {
         <Route path="/" component={Home} />
         <Route path="/auth" component={Auth} />
         <Route path="/shop" component={Shop} />
+        <Route path="/product/:id" component={ProductDetails} />
         <Route path="/about" component={About} />
         <Route path="/contact" component={Contact} />
         <Route path="/privacy" component={Privacy} />

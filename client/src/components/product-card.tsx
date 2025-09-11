@@ -7,6 +7,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { ProductDTO as Product } from "@shared/schema";
 import { formatCurrency } from "@/lib/currency";
+import { useLocation } from "wouter";
 
 interface ProductCardProps {
   product: Product;
@@ -15,6 +16,7 @@ interface ProductCardProps {
 export default function ProductCard({ product }: ProductCardProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
 
   const addToCartMutation = useMutation({
     mutationFn: (productId: string) =>
@@ -35,8 +37,13 @@ export default function ProductCard({ product }: ProductCardProps) {
     },
   });
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation when clicking add to cart
     addToCartMutation.mutate(product.id);
+  };
+
+  const handleProductClick = () => {
+    setLocation(`/product/${product.id}`);
   };
 
   const price = parseFloat(product.price);
@@ -44,7 +51,11 @@ export default function ProductCard({ product }: ProductCardProps) {
   const hasDiscount = discountPrice && discountPrice < price;
 
   return (
-    <Card className="overflow-hidden hover:shadow-xl smooth-transition group" data-testid={`card-product-${product.id}`}>
+    <Card 
+      className="overflow-hidden hover:shadow-xl smooth-transition group cursor-pointer" 
+      onClick={handleProductClick}
+      data-testid={`card-product-${product.id}`}
+    >
       <div className="relative">
         {product.images?.[0] ? (
           <img

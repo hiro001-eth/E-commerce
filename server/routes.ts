@@ -13,6 +13,7 @@ import {
   insertOrderSchema,
   insertReviewSchema,
   insertCouponSchema,
+  insertWishlistSchema,
   locationFilterSchema,
   insertVendorSchema,
   vendorLocationSchema,
@@ -28,6 +29,7 @@ import {
   type Review,
   type Coupon,
   type Category,
+  type Wishlist,
   type UserDTO,
   type ProductDTO,
   type VendorDTO,
@@ -35,7 +37,8 @@ import {
   type CartItemDTO,
   type ReviewDTO,
   type CouponDTO,
-  type CategoryDTO
+  type CategoryDTO,
+  type WishlistDTO
 } from "@shared/schema";
 import { z } from "zod";
 import { PasswordCrypto, DataCrypto, SessionCrypto, InputSecurity, SecurityAudit } from "./crypto";
@@ -170,6 +173,16 @@ function mapCartToDTO(cart: Cart, product?: Product, vendor?: Vendor): CartItemD
     productId: cart.productId,
     quantity: cart.quantity,
     createdAt: cart.createdAt?.toISOString() ?? new Date().toISOString(),
+    ...(product && { product: mapProductToDTO(product, vendor) })
+  };
+}
+
+function mapWishlistToDTO(wishlist: Wishlist, product?: Product, vendor?: Vendor): WishlistDTO {
+  return {
+    id: wishlist.id,
+    userId: wishlist.userId,
+    productId: wishlist.productId,
+    createdAt: wishlist.createdAt?.toISOString() ?? new Date().toISOString(),
     ...(product && { product: mapProductToDTO(product, vendor) })
   };
 }
@@ -1000,6 +1013,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Cart item not found" });
       }
       res.json({ message: "Item removed from cart" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Wishlist routes
+  app.get("/api/wishlist", requireAuth, async (req, res) => {
+    try {
+      const wishlistItems = await storage.getWishlistByUser(req.session.user!.id);
+      
+      // Fetch product details for each wishlist item and convert to DTOs
+      const wishlistWithProducts = await Promise.all(
+        wishlistItems.map(async (item) => {
+          const product = await storage.getProduct(item.productId);
+          const vendor = product ? await storage.getVendor(product.vendorId) : undefined;
+          return mapWishlistToDTO(item, product || undefined, vendor || undefined);
+        })
+      );
+
+      res.json(wishlistWithProducts);
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.post("/api/wishlist", requireAuth, async (req, res) => {
+    try {
+      const { productId } = req.body;
+      
+      if (!productId) {
+        return res.status(400).json({ message: "Product ID is required" });
+      }
+
+      const product = await storage.getProduct(productId);
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      const wishlistItem = await storage.addToWishlist({
+        userId: req.session.user!.id,
+        productId,
+      });
+
+      res.status(201).json(mapWishlistToDTO(wishlistItem));
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  app.delete("/api/wishlist/:id", requireAuth, async (req, res) => {
+    try {
+      const deleted = await storage.removeFromWishlist(req.params.id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Wishlist item not found" });
+      }
+      res.json({ message: "Item removed from wishlist" });
+    } catch (error) {
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Product reviews endpoint
+  app.get("/api/products/:id/reviews", async (req, res) => {
+    try {
+      const reviews = await storage.getReviewsByProduct(req.params.id);
+      const reviewDTOs = reviews.map(review => mapReviewToDTO(review));
+      res.json(reviewDTOs);
     } catch (error) {
       res.status(500).json({ message: "Internal server error" });
     }

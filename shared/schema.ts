@@ -141,6 +141,13 @@ export const coupons = pgTable("coupons", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+export const wishlists = pgTable("wishlists", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id),
+  productId: varchar("product_id").notNull().references(() => products.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // Insert schemas
 export const insertUserSchema = createInsertSchema(users).omit({
   id: true,
@@ -188,6 +195,11 @@ export const insertCategorySchema = createInsertSchema(categories).omit({
   id: true,
 });
 
+export const insertWishlistSchema = createInsertSchema(wishlists).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
@@ -206,6 +218,8 @@ export type InsertCoupon = z.infer<typeof insertCouponSchema>;
 export type Category = typeof categories.$inferSelect;
 export type InsertCategory = z.infer<typeof insertCategorySchema>;
 export type OrderItem = typeof orderItems.$inferSelect;
+export type Wishlist = typeof wishlists.$inferSelect;
+export type InsertWishlist = z.infer<typeof insertWishlistSchema>;
 
 // Auth schemas
 export const loginSchema = z.object({
@@ -438,4 +452,12 @@ export interface CategoryDTO {
   name: string;
   description: string | null;
   isActive: boolean;
+}
+
+export interface WishlistDTO {
+  id: string;
+  userId: string;
+  productId: string;
+  createdAt: string;
+  product?: ProductDTO;
 }

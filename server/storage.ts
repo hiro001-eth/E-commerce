@@ -15,6 +15,8 @@ import {
   type InsertCoupon,
   type Category,
   type OrderItem,
+  type Wishlist,
+  type InsertWishlist,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
 import { PasswordCrypto } from "./crypto";
@@ -327,6 +329,12 @@ export interface IStorage {
   getAllCategories(): Promise<Category[]>;
   createCategory(name: string, description?: string): Promise<Category>;
 
+  // Wishlist methods
+  getWishlistByUser(userId: string): Promise<Wishlist[]>;
+  addToWishlist(wishlist: InsertWishlist): Promise<Wishlist>;
+  removeFromWishlist(id: string): Promise<boolean>;
+  isInWishlist(userId: string, productId: string): Promise<boolean>;
+
   // Location-based filtering methods
   getProductsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Product[]>;
   getVendorsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Vendor[]>;
@@ -342,6 +350,7 @@ export class MemStorage implements IStorage {
   private coupons: Map<string, Coupon> = new Map();
   private categories: Map<string, Category> = new Map();
   private orderItems: Map<string, OrderItem> = new Map();
+  private wishlists: Map<string, Wishlist> = new Map();
 
   constructor() {
     this.initializeData().catch(console.error);
@@ -598,6 +607,41 @@ export class MemStorage implements IStorage {
     
     userCarts.forEach(([id]) => this.carts.delete(id));
     return true;
+  }
+
+  // Wishlist methods
+  async getWishlistByUser(userId: string): Promise<Wishlist[]> {
+    return Array.from(this.wishlists.values()).filter(wishlist => wishlist.userId === userId);
+  }
+
+  async addToWishlist(insertWishlist: InsertWishlist): Promise<Wishlist> {
+    // Check if item already exists in wishlist
+    const existingWishlist = Array.from(this.wishlists.values()).find(
+      wishlist => wishlist.userId === insertWishlist.userId && wishlist.productId === insertWishlist.productId
+    );
+
+    if (existingWishlist) {
+      return existingWishlist; // Already in wishlist
+    }
+
+    const id = randomUUID();
+    const wishlist: Wishlist = {
+      ...insertWishlist,
+      id,
+      createdAt: new Date(),
+    };
+    this.wishlists.set(id, wishlist);
+    return wishlist;
+  }
+
+  async removeFromWishlist(id: string): Promise<boolean> {
+    return this.wishlists.delete(id);
+  }
+
+  async isInWishlist(userId: string, productId: string): Promise<boolean> {
+    return Array.from(this.wishlists.values()).some(
+      wishlist => wishlist.userId === userId && wishlist.productId === productId
+    );
   }
 
   // Order methods
