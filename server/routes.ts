@@ -17,6 +17,9 @@ import {
   insertVendorSchema,
   vendorLocationSchema,
   vendorDeliverySchema,
+  vendorSettingsSchema,
+  changePasswordSchema,
+  changeEmailSchema,
   type User,
   type Product,
   type Vendor,
@@ -563,6 +566,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       console.error("Location update error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Update vendor settings
+  app.put("/api/vendor/settings", requireAuth, requireRole(["vendor"]), async (req, res) => {
+    try {
+      const vendor = await storage.getVendorByUserId(req.session.user!.id);
+      if (!vendor) {
+        return res.status(403).json({ message: "Vendor not found" });
+      }
+
+      const validatedData = vendorSettingsSchema.parse(req.body);
+      
+      const updatedVendor = await storage.updateVendor(vendor.id, validatedData);
+      if (!updatedVendor) {
+        return res.status(500).json({ message: "Failed to update vendor settings" });
+      }
+
+      res.json(mapVendorToDTO(updatedVendor));
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("Vendor settings update error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Change user password
+  app.put("/api/auth/change-password", requireAuth, async (req, res) => {
+    try {
+      const validatedData = changePasswordSchema.parse(req.body);
+      
+      const user = await storage.getUser(req.session.user!.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify current password
+      const isCurrentPasswordValid = await passwordCrypto.verify(validatedData.currentPassword, user.password);
+      if (!isCurrentPasswordValid) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
+
+      // Hash new password
+      const hashedNewPassword = await passwordCrypto.hash(validatedData.newPassword);
+      
+      const updatedUser = await storage.updateUser(user.id, { password: hashedNewPassword });
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update password" });
+      }
+
+      res.json({ message: "Password updated successfully" });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("Password change error:", error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  });
+
+  // Change user email
+  app.put("/api/auth/change-email", requireAuth, async (req, res) => {
+    try {
+      const validatedData = changeEmailSchema.parse(req.body);
+      
+      const user = await storage.getUser(req.session.user!.id);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Verify password before allowing email change
+      const isPasswordValid = await passwordCrypto.verify(validatedData.password, user.password);
+      if (!isPasswordValid) {
+        return res.status(400).json({ message: "Password is incorrect" });
+      }
+
+      // Check if email is already taken
+      const existingUser = await storage.getUserByEmail(validatedData.newEmail);
+      if (existingUser && existingUser.id !== user.id) {
+        return res.status(400).json({ message: "Email is already taken" });
+      }
+
+      const updatedUser = await storage.updateUser(user.id, { email: validatedData.newEmail });
+      if (!updatedUser) {
+        return res.status(500).json({ message: "Failed to update email" });
+      }
+
+      // Update session
+      req.session.user = updatedUser;
+
+      res.json({ message: "Email updated successfully", user: mapUserToDTO(updatedUser) });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          message: "Validation error", 
+          errors: error.errors 
+        });
+      }
+      console.error("Email change error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

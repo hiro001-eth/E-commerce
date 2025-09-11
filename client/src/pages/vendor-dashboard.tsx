@@ -15,6 +15,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Store, Package, BarChart3, Settings, Plus, Edit, Trash2, DollarSign, Upload, X, Eye, EyeOff } from "lucide-react";
 import type { User as UserType, Product, Order, Vendor, Category } from "@shared/schema";
+import { vendorSettingsSchema, changePasswordSchema, changeEmailSchema } from "@shared/schema";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -29,11 +30,18 @@ const productSchema = z.object({
   allowsCoupons: z.boolean(),
 });
 
+// Using schemas from shared/schema.ts for consistency
+
 type ProductForm = z.infer<typeof productSchema>;
+type VendorSettingsForm = z.infer<typeof vendorSettingsSchema>;
+type ChangePasswordForm = z.infer<typeof changePasswordSchema>;
+type ChangeEmailForm = z.infer<typeof changeEmailSchema>;
 
 export default function VendorDashboard() {
   const [activeTab, setActiveTab] = useState("analytics");
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingSettings, setEditingSettings] = useState(false);
+  const [editingProfile, setEditingProfile] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -78,6 +86,32 @@ export default function VendorDashboard() {
       images: [],
       isActive: true,
       allowsCoupons: true,
+    },
+  });
+
+  const vendorSettingsForm = useForm<VendorSettingsForm>({
+    resolver: zodResolver(vendorSettingsSchema),
+    defaultValues: {
+      storeName: "",
+      storeDescription: "",
+      businessLicense: "",
+    },
+  });
+
+  const changePasswordForm = useForm<ChangePasswordForm>({
+    resolver: zodResolver(changePasswordSchema),
+    defaultValues: {
+      currentPassword: "",
+      newPassword: "",
+      confirmPassword: "",
+    },
+  });
+
+  const changeEmailForm = useForm<ChangeEmailForm>({
+    resolver: zodResolver(changeEmailSchema),
+    defaultValues: {
+      newEmail: "",
+      password: "",
     },
   });
 
@@ -136,6 +170,59 @@ export default function VendorDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       toast({ title: "Order status updated" });
+    },
+  });
+
+  const updateVendorSettingsMutation = useMutation({
+    mutationFn: (data: VendorSettingsForm) =>
+      apiRequest("PUT", "/api/vendor/settings", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/vendors/me"] });
+      toast({ title: "Store settings updated successfully" });
+      setEditingSettings(false);
+      vendorSettingsForm.reset();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to update settings", 
+        description: error.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: (data: ChangePasswordForm) =>
+      apiRequest("PUT", "/api/auth/change-password", data),
+    onSuccess: () => {
+      toast({ title: "Password changed successfully" });
+      setEditingProfile(false);
+      changePasswordForm.reset();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to change password", 
+        description: error.message || "Please try again",
+        variant: "destructive" 
+      });
+    },
+  });
+
+  const changeEmailMutation = useMutation({
+    mutationFn: (data: ChangeEmailForm) =>
+      apiRequest("PUT", "/api/auth/change-email", data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      toast({ title: "Email changed successfully" });
+      setEditingProfile(false);
+      changeEmailForm.reset();
+    },
+    onError: (error: any) => {
+      toast({ 
+        title: "Failed to change email", 
+        description: error.message || "Please try again",
+        variant: "destructive" 
+      });
     },
   });
 
@@ -243,6 +330,47 @@ export default function VendorDashboard() {
     if (confirm("Are you sure you want to delete this product?")) {
       deleteProductMutation.mutate(id);
     }
+  };
+
+  const handleEditSettings = () => {
+    setEditingSettings(true);
+    // Pre-fill form with current vendor data
+    vendorSettingsForm.reset({
+      storeName: vendor?.storeName || "",
+      storeDescription: vendor?.storeDescription || "",
+      businessLicense: vendor?.businessLicense || "",
+    });
+  };
+
+  // Auto-fill vendor settings form when vendor data loads
+  React.useEffect(() => {
+    if (vendor && editingSettings) {
+      vendorSettingsForm.reset({
+        storeName: vendor.storeName,
+        storeDescription: vendor.storeDescription || "",
+        businessLicense: vendor.businessLicense || "",
+      });
+    }
+  }, [vendor, editingSettings, vendorSettingsForm]);
+
+  const handleEditProfile = () => {
+    setEditingProfile(true);
+    changeEmailForm.reset({
+      newEmail: user?.email || "",
+      password: "",
+    });
+  };
+
+  const onSubmitVendorSettings = (data: VendorSettingsForm) => {
+    updateVendorSettingsMutation.mutate(data);
+  };
+
+  const onSubmitChangePassword = (data: ChangePasswordForm) => {
+    changePasswordMutation.mutate(data);
+  };
+
+  const onSubmitChangeEmail = (data: ChangeEmailForm) => {
+    changeEmailMutation.mutate(data);
   };
 
   if (!user) {
@@ -835,44 +963,290 @@ export default function VendorDashboard() {
 
             {/* Settings Tab */}
             {activeTab === "settings" && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Store Settings</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <Label>Store Name</Label>
-                    <p className="text-muted-foreground" data-testid="text-settings-store-name">
-                      {vendor?.storeName || "Not set"}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label>Store Description</Label>
-                    <p className="text-muted-foreground" data-testid="text-settings-store-description">
-                      {vendor?.storeDescription || "No description provided"}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label>Business License</Label>
-                    <p className="text-muted-foreground" data-testid="text-settings-business-license">
-                      {vendor?.businessLicense || "Not provided"}
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <Label>Approval Status</Label>
-                    <Badge variant={vendor?.isApproved ? "default" : "secondary"} className="ml-2">
-                      {vendor?.isApproved ? "Approved" : "Pending Approval"}
-                    </Badge>
-                  </div>
-                  
-                  <div className="pt-4">
-                    <Button data-testid="button-edit-store-settings">Edit Store Settings</Button>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="space-y-6">
+                {/* Store Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Store Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!editingSettings ? (
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Store Name</Label>
+                          <p className="text-muted-foreground" data-testid="text-settings-store-name">
+                            {vendor?.storeName || "Not set"}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <Label>Store Description</Label>
+                          <p className="text-muted-foreground" data-testid="text-settings-store-description">
+                            {vendor?.storeDescription || "No description provided"}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <Label>Business License</Label>
+                          <p className="text-muted-foreground" data-testid="text-settings-business-license">
+                            {vendor?.businessLicense || "Not provided"}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <Label>Approval Status</Label>
+                          <Badge variant={vendor?.isApproved ? "default" : "secondary"} className="ml-2">
+                            {vendor?.isApproved ? "Approved" : "Pending Approval"}
+                          </Badge>
+                        </div>
+                        
+                        <div className="pt-4">
+                          <Button onClick={handleEditSettings} data-testid="button-edit-store-settings">
+                            Edit Store Settings
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <form onSubmit={vendorSettingsForm.handleSubmit(onSubmitVendorSettings)} className="space-y-4">
+                        <div>
+                          <Label htmlFor="storeName">Store Name</Label>
+                          <Input
+                            id="storeName"
+                            {...vendorSettingsForm.register("storeName")}
+                            data-testid="input-store-name"
+                          />
+                          {vendorSettingsForm.formState.errors.storeName && (
+                            <p className="text-sm text-destructive mt-1">
+                              {vendorSettingsForm.formState.errors.storeName.message}
+                            </p>
+                          )}
+                        </div>
+
+                        <div>
+                          <Label htmlFor="storeDescription">Store Description</Label>
+                          <Textarea
+                            id="storeDescription"
+                            {...vendorSettingsForm.register("storeDescription")}
+                            data-testid="textarea-store-description"
+                            rows={3}
+                          />
+                        </div>
+
+                        <div>
+                          <Label htmlFor="businessLicense">Business License</Label>
+                          <Input
+                            id="businessLicense"
+                            {...vendorSettingsForm.register("businessLicense")}
+                            data-testid="input-business-license"
+                          />
+                        </div>
+
+                        <div className="flex gap-3">
+                          <Button
+                            type="submit"
+                            disabled={updateVendorSettingsMutation.isPending}
+                            data-testid="button-save-store-settings"
+                          >
+                            {updateVendorSettingsMutation.isPending ? "Saving..." : "Save Changes"}
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                              setEditingSettings(false);
+                              vendorSettingsForm.reset();
+                            }}
+                            data-testid="button-cancel-store-settings"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </form>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* Profile Settings */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Profile Settings</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {!editingProfile ? (
+                      <div className="space-y-4">
+                        <div>
+                          <Label>Name</Label>
+                          <p className="text-muted-foreground">
+                            {user?.firstName} {user?.lastName}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <Label>Email</Label>
+                          <p className="text-muted-foreground" data-testid="text-profile-email">
+                            {user?.email}
+                          </p>
+                        </div>
+                        
+                        <div>
+                          <Label>Phone</Label>
+                          <p className="text-muted-foreground">
+                            {user?.phone || "Not provided"}
+                          </p>
+                        </div>
+                        
+                        <div className="pt-4 space-x-3">
+                          <Button onClick={handleEditProfile} data-testid="button-edit-profile">
+                            Change Email
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            onClick={() => {
+                              setEditingProfile(true);
+                              changePasswordForm.reset();
+                            }}
+                            data-testid="button-change-password"
+                          >
+                            Change Password
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Tabs defaultValue="email" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2">
+                          <TabsTrigger value="email">Change Email</TabsTrigger>
+                          <TabsTrigger value="password">Change Password</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="email" className="space-y-4">
+                          <form onSubmit={changeEmailForm.handleSubmit(onSubmitChangeEmail)} className="space-y-4">
+                            <div>
+                              <Label htmlFor="newEmail">New Email</Label>
+                              <Input
+                                id="newEmail"
+                                type="email"
+                                {...changeEmailForm.register("newEmail")}
+                                data-testid="input-new-email"
+                              />
+                              {changeEmailForm.formState.errors.newEmail && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {changeEmailForm.formState.errors.newEmail.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor="emailPassword">Current Password</Label>
+                              <Input
+                                id="emailPassword"
+                                type="password"
+                                {...changeEmailForm.register("password")}
+                                data-testid="input-email-password"
+                              />
+                              {changeEmailForm.formState.errors.password && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {changeEmailForm.formState.errors.password.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex gap-3">
+                              <Button
+                                type="submit"
+                                disabled={changeEmailMutation.isPending}
+                                data-testid="button-save-email"
+                              >
+                                {changeEmailMutation.isPending ? "Changing..." : "Change Email"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingProfile(false);
+                                  changeEmailForm.reset();
+                                }}
+                                data-testid="button-cancel-email"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </form>
+                        </TabsContent>
+                        
+                        <TabsContent value="password" className="space-y-4">
+                          <form onSubmit={changePasswordForm.handleSubmit(onSubmitChangePassword)} className="space-y-4">
+                            <div>
+                              <Label htmlFor="currentPassword">Current Password</Label>
+                              <Input
+                                id="currentPassword"
+                                type="password"
+                                {...changePasswordForm.register("currentPassword")}
+                                data-testid="input-current-password"
+                              />
+                              {changePasswordForm.formState.errors.currentPassword && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {changePasswordForm.formState.errors.currentPassword.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor="newPassword">New Password</Label>
+                              <Input
+                                id="newPassword"
+                                type="password"
+                                {...changePasswordForm.register("newPassword")}
+                                data-testid="input-new-password"
+                              />
+                              {changePasswordForm.formState.errors.newPassword && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {changePasswordForm.formState.errors.newPassword.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div>
+                              <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                              <Input
+                                id="confirmPassword"
+                                type="password"
+                                {...changePasswordForm.register("confirmPassword")}
+                                data-testid="input-confirm-password"
+                              />
+                              {changePasswordForm.formState.errors.confirmPassword && (
+                                <p className="text-sm text-destructive mt-1">
+                                  {changePasswordForm.formState.errors.confirmPassword.message}
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="flex gap-3">
+                              <Button
+                                type="submit"
+                                disabled={changePasswordMutation.isPending}
+                                data-testid="button-save-password"
+                              >
+                                {changePasswordMutation.isPending ? "Changing..." : "Change Password"}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                  setEditingProfile(false);
+                                  changePasswordForm.reset();
+                                }}
+                                data-testid="button-cancel-password"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </form>
+                        </TabsContent>
+                      </Tabs>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
             )}
           </div>
         </div>

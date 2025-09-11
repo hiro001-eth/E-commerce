@@ -263,6 +263,33 @@ export const vendorDeliverySchema = z.object({
 export type VendorLocation = z.infer<typeof vendorLocationSchema>;
 export type VendorDelivery = z.infer<typeof vendorDeliverySchema>;
 
+// Vendor settings update schema
+export const vendorSettingsSchema = z.object({
+  storeName: z.string().min(1, "Store name is required"),
+  storeDescription: z.string().optional(),
+  businessLicense: z.string().optional(),
+});
+
+// Password change schema
+export const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(6, "New password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
+// Email change schema
+export const changeEmailSchema = z.object({
+  newEmail: z.string().email("Invalid email address"),
+  password: z.string().min(1, "Password is required to change email"),
+});
+
+export type VendorSettings = z.infer<typeof vendorSettingsSchema>;
+export type ChangePassword = z.infer<typeof changePasswordSchema>;
+export type ChangeEmail = z.infer<typeof changeEmailSchema>;
+
 // API DTOs - These represent the JSON-serialized versions sent over HTTP
 // All Date fields become strings, nullable fields are properly typed
 
