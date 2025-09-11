@@ -516,6 +516,8 @@ export class MemStorage implements IStorage {
       stock: insertProduct.stock !== undefined ? insertProduct.stock : 0,
       minOrderQuantity: insertProduct.minOrderQuantity || 1,
       maxOrderQuantity: insertProduct.maxOrderQuantity || null,
+      weight: insertProduct.weight || null,
+      dimensions: insertProduct.dimensions || null,
       images: insertProduct.images || [],
       availableInAreas: insertProduct.availableInAreas ?? [],
       requiresShipping: insertProduct.requiresShipping ?? true,
