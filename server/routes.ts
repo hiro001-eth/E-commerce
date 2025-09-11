@@ -128,12 +128,23 @@ function mapProductToDTO(product: Product, vendor?: Vendor): ProductDTO {
     price: product.price,
     discountPrice: product.discountPrice,
     stock: product.stock,
+    minOrderQuantity: product.minOrderQuantity,
+    maxOrderQuantity: product.maxOrderQuantity,
     images: product.images || [],
     sku: product.sku,
+    brand: product.brand,
+    weight: product.weight,
+    dimensions: product.dimensions,
+    colors: product.colors || [],
+    sizes: product.sizes || [],
+    tags: product.tags || [],
+    warrantyPeriod: product.warrantyPeriod || 0,
+    isDigitalProduct: product.isDigitalProduct,
     availableInAreas: product.availableInAreas || [],
     requiresShipping: product.requiresShipping,
     isActive: product.isActive,
     allowsCoupons: product.allowsCoupons,
+    isFeatured: product.isFeatured,
     rating: product.rating || "0",
     reviewCount: product.reviewCount || 0,
     createdAt: product.createdAt?.toISOString() ?? new Date().toISOString(),
@@ -622,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify current password
-      const isCurrentPasswordValid = await PasswordCrypto.verifyPassword(validatedData.currentPassword, user.password);
+      const isCurrentPasswordValid = await PasswordCrypto.comparePassword(validatedData.currentPassword, user.password);
       if (!isCurrentPasswordValid) {
         return res.status(400).json({ message: "Current password is incorrect" });
       }
@@ -659,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Verify password before allowing email change
-      const isPasswordValid = await PasswordCrypto.verifyPassword(validatedData.password, user.password);
+      const isPasswordValid = await PasswordCrypto.comparePassword(validatedData.password, user.password);
       if (!isPasswordValid) {
         return res.status(400).json({ message: "Password is incorrect" });
       }

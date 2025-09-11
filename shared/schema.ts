@@ -64,12 +64,27 @@ export const products = pgTable("products", {
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   discountPrice: decimal("discount_price", { precision: 10, scale: 2 }),
   stock: integer("stock").notNull().default(0),
+  minOrderQuantity: integer("min_order_quantity").notNull().default(1),
+  maxOrderQuantity: integer("max_order_quantity").default(100),
   images: text("images").array().default([]),
   sku: text("sku").notNull().unique(),
+  brand: text("brand"),
+  weight: decimal("weight", { precision: 8, scale: 2 }), // in kg
+  dimensions: jsonb("dimensions").$type<{
+    length?: number; // in cm
+    width?: number; // in cm
+    height?: number; // in cm
+  }>(),
+  colors: text("colors").array().default([]), // Available colors
+  sizes: text("sizes").array().default([]), // Available sizes
+  tags: text("tags").array().default([]), // Keywords/tags for search
+  warrantyPeriod: integer("warranty_period").default(0), // in months
+  isDigitalProduct: boolean("is_digital_product").notNull().default(false),
   availableInAreas: text("available_in_areas").array().default([]), // Areas where this product is available
   requiresShipping: boolean("requires_shipping").notNull().default(true),
   isActive: boolean("is_active").notNull().default(true),
   allowsCoupons: boolean("allows_coupons").notNull().default(true),
+  isFeatured: boolean("is_featured").notNull().default(false),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
   reviewCount: integer("review_count").default(0),
   createdAt: timestamp("created_at").defaultNow(),
@@ -360,12 +375,27 @@ export interface ProductDTO {
   price: string;
   discountPrice: string | null;
   stock: number;
+  minOrderQuantity: number;
+  maxOrderQuantity: number | null;
   images: string[];
   sku: string;
+  brand: string | null;
+  weight: string | null; // decimal as string
+  dimensions: {
+    length?: number;
+    width?: number;
+    height?: number;
+  } | null;
+  colors: string[];
+  sizes: string[];
+  tags: string[];
+  warrantyPeriod: number;
+  isDigitalProduct: boolean;
   availableInAreas: string[];
   requiresShipping: boolean;
   isActive: boolean;
   allowsCoupons: boolean;
+  isFeatured: boolean;
   rating: string;
   reviewCount: number;
   createdAt: string;

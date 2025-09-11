@@ -24,11 +24,48 @@ const productSchema = z.object({
   price: z.string().regex(/^\d+(\.\d{1,2})?$/, "Invalid price format"),
   discountPrice: z.string().optional(),
   stock: z.number().min(0, "Stock cannot be negative"),
+  minOrderQuantity: z.number().min(1, "Minimum order quantity must be at least 1").default(1),
+  maxOrderQuantity: z.number().min(1, "Maximum order quantity must be at least 1").optional(),
   sku: z.string().min(1, "SKU is required"),
+  brand: z.string().optional(),
+  weight: z.string().optional(), // as string for form, converted to number later
+  dimensions: z.object({
+    length: z.string().optional(),
+    width: z.string().optional(), 
+    height: z.string().optional(),
+  }).optional(),
+  colors: z.string().optional(), // comma-separated string, converted to array later
+  sizes: z.string().optional(), // comma-separated string, converted to array later
+  tags: z.string().optional(), // comma-separated string, converted to array later
+  warrantyPeriod: z.number().min(0, "Warranty period cannot be negative").default(0),
+  isDigitalProduct: z.boolean().default(false),
   categoryId: z.string().optional(),
   images: z.array(z.string()).optional(),
-  isActive: z.boolean(),
-  allowsCoupons: z.boolean(),
+  isActive: z.boolean().default(true),
+  allowsCoupons: z.boolean().default(true),
+  isFeatured: z.boolean().default(false),
+}).refine((data) => {
+  // Cross-field validation: maxOrderQuantity must be >= minOrderQuantity
+  if (data.maxOrderQuantity && data.maxOrderQuantity < data.minOrderQuantity) {
+    return false;
+  }
+  return true;
+}, {
+  message: "Maximum order quantity must be greater than or equal to minimum order quantity",
+  path: ["maxOrderQuantity"],
+}).refine((data) => {
+  // If discount price is provided, it should be less than regular price
+  if (data.discountPrice && data.price) {
+    const price = parseFloat(data.price);
+    const discountPrice = parseFloat(data.discountPrice);
+    if (discountPrice >= price) {
+      return false;
+    }
+  }
+  return true;
+}, {
+  message: "Discount price must be less than regular price",
+  path: ["discountPrice"],
 });
 
 // Using schemas from shared/schema.ts for consistency
@@ -82,11 +119,26 @@ export default function VendorDashboard() {
       price: "",
       discountPrice: "",
       stock: 0,
+      minOrderQuantity: 1,
+      maxOrderQuantity: 100,
       sku: "",
+      brand: "",
+      weight: "",
+      dimensions: {
+        length: "",
+        width: "",
+        height: "",
+      },
+      colors: "",
+      sizes: "",
+      tags: "",
+      warrantyPeriod: 0,
+      isDigitalProduct: false,
       categoryId: "",
       images: [],
       isActive: true,
       allowsCoupons: true,
+      isFeatured: false,
     },
   });
 
@@ -121,6 +173,20 @@ export default function VendorDashboard() {
       apiRequest("POST", "/api/products", { 
         ...data, 
         stock: Number(data.stock),
+        minOrderQuantity: Number(data.minOrderQuantity),
+        maxOrderQuantity: data.maxOrderQuantity ? Number(data.maxOrderQuantity) : undefined,
+        weight: data.weight ? data.weight : undefined, // Send as string for decimal compatibility
+        dimensions: data.dimensions && (data.dimensions.length || data.dimensions.width || data.dimensions.height) ? {
+          length: data.dimensions.length ? parseFloat(data.dimensions.length) : undefined,
+          width: data.dimensions.width ? parseFloat(data.dimensions.width) : undefined,
+          height: data.dimensions.height ? parseFloat(data.dimensions.height) : undefined
+        } : undefined,
+        colors: data.colors ? data.colors.split(',').map(c => c.trim()).filter(c => c) : [],
+        sizes: data.sizes ? data.sizes.split(',').map(s => s.trim()).filter(s => s) : [],
+        tags: data.tags ? data.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+        warrantyPeriod: Number(data.warrantyPeriod),
+        requiresShipping: !data.isDigitalProduct, // Auto-set shipping based on digital product flag
+        discountPrice: data.discountPrice || undefined, // Ensure empty string becomes undefined
         categoryId: data.categoryId === "no-category" ? null : data.categoryId,
         images: imageUrls
       }),
@@ -128,6 +194,7 @@ export default function VendorDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/products/vendor"] });
       toast({ title: "Product created successfully" });
       productForm.reset();
+      setImageUrls([]);
       setActiveTab("products");
     },
     onError: () => {
@@ -140,6 +207,20 @@ export default function VendorDashboard() {
       apiRequest("PUT", `/api/products/${id}`, { 
         ...data, 
         stock: Number(data.stock),
+        minOrderQuantity: Number(data.minOrderQuantity),
+        maxOrderQuantity: data.maxOrderQuantity ? Number(data.maxOrderQuantity) : undefined,
+        weight: data.weight ? data.weight : undefined, // Send as string for decimal compatibility
+        dimensions: data.dimensions && (data.dimensions.length || data.dimensions.width || data.dimensions.height) ? {
+          length: data.dimensions.length ? parseFloat(data.dimensions.length) : undefined,
+          width: data.dimensions.width ? parseFloat(data.dimensions.width) : undefined,
+          height: data.dimensions.height ? parseFloat(data.dimensions.height) : undefined
+        } : undefined,
+        colors: data.colors ? data.colors.split(',').map(c => c.trim()).filter(c => c) : [],
+        sizes: data.sizes ? data.sizes.split(',').map(s => s.trim()).filter(s => s) : [],
+        tags: data.tags ? data.tags.split(',').map(t => t.trim()).filter(t => t) : [],
+        warrantyPeriod: Number(data.warrantyPeriod),
+        requiresShipping: !data.isDigitalProduct, // Auto-set shipping based on digital product flag
+        discountPrice: data.discountPrice || undefined, // Ensure empty string becomes undefined
         categoryId: data.categoryId === "no-category" ? null : data.categoryId,
         images: imageUrls
       }),
@@ -148,6 +229,7 @@ export default function VendorDashboard() {
       toast({ title: "Product updated successfully" });
       setEditingProduct(null);
       productForm.reset();
+      setImageUrls([]);
     },
     onError: () => {
       toast({ title: "Failed to update product", variant: "destructive" });
@@ -318,11 +400,26 @@ export default function VendorDashboard() {
       price: product.price,
       discountPrice: product.discountPrice || "",
       stock: product.stock,
+      minOrderQuantity: product.minOrderQuantity || 1,
+      maxOrderQuantity: product.maxOrderQuantity || 100,
       sku: product.sku,
+      brand: product.brand || "",
+      weight: product.weight ? product.weight.toString() : "",
+      dimensions: {
+        length: product.dimensions?.length ? product.dimensions.length.toString() : "",
+        width: product.dimensions?.width ? product.dimensions.width.toString() : "",
+        height: product.dimensions?.height ? product.dimensions.height.toString() : "",
+      },
+      colors: product.colors ? product.colors.join(', ') : "",
+      sizes: product.sizes ? product.sizes.join(', ') : "",
+      tags: product.tags ? product.tags.join(', ') : "",
+      warrantyPeriod: product.warrantyPeriod || 0,
+      isDigitalProduct: product.isDigitalProduct || false,
       categoryId: product.categoryId || "",
       images: product.images || [],
       isActive: product.isActive,
       allowsCoupons: product.allowsCoupons,
+      isFeatured: product.isFeatured || false,
     });
     setActiveTab("add-product");
   };
@@ -931,6 +1028,182 @@ export default function VendorDashboard() {
                           data-testid="checkbox-allows-coupons"
                         />
                         <Label htmlFor="allowsCoupons">Allow coupon discounts</Label>
+                      </div>
+                    </div>
+
+                    {/* Enhanced Product Features */}
+                    <div className="space-y-6 border-t pt-6">
+                      <h3 className="text-lg font-semibold">Enhanced Product Details</h3>
+                      
+                      {/* Order Quantity Controls */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="minOrderQuantity">Min Order Quantity</Label>
+                          <Input
+                            id="minOrderQuantity"
+                            type="number"
+                            min="1"
+                            {...productForm.register("minOrderQuantity", { valueAsNumber: true })}
+                            data-testid="input-min-order-quantity"
+                          />
+                          {productForm.formState.errors.minOrderQuantity && (
+                            <p className="text-sm text-destructive mt-1">
+                              {productForm.formState.errors.minOrderQuantity.message}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <Label htmlFor="maxOrderQuantity">Max Order Quantity</Label>
+                          <Input
+                            id="maxOrderQuantity"
+                            type="number"
+                            min="1"
+                            {...productForm.register("maxOrderQuantity", { valueAsNumber: true })}
+                            data-testid="input-max-order-quantity"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="warrantyPeriod">Warranty (months)</Label>
+                          <Input
+                            id="warrantyPeriod"
+                            type="number"
+                            min="0"
+                            {...productForm.register("warrantyPeriod", { valueAsNumber: true })}
+                            data-testid="input-warranty-period"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Brand and Weight */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="brand">Brand (Optional)</Label>
+                          <Input
+                            id="brand"
+                            {...productForm.register("brand")}
+                            placeholder="e.g., Samsung, Apple, Nike"
+                            data-testid="input-brand"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="weight">Weight (kg, Optional)</Label>
+                          <Input
+                            id="weight"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            {...productForm.register("weight")}
+                            placeholder="e.g., 1.5"
+                            data-testid="input-weight"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Dimensions */}
+                      <div>
+                        <Label>Dimensions (cm, Optional)</Label>
+                        <div className="grid grid-cols-3 gap-4 mt-2">
+                          <div>
+                            <Label htmlFor="dimensions.length">Length</Label>
+                            <Input
+                              id="dimensions.length"
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              {...productForm.register("dimensions.length")}
+                              placeholder="0.0"
+                              data-testid="input-dimensions-length"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="dimensions.width">Width</Label>
+                            <Input
+                              id="dimensions.width"
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              {...productForm.register("dimensions.width")}
+                              placeholder="0.0"
+                              data-testid="input-dimensions-width"
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="dimensions.height">Height</Label>
+                            <Input
+                              id="dimensions.height"
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              {...productForm.register("dimensions.height")}
+                              placeholder="0.0"
+                              data-testid="input-dimensions-height"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Product Variants */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="colors">Available Colors (Optional)</Label>
+                          <Input
+                            id="colors"
+                            {...productForm.register("colors")}
+                            placeholder="e.g., Red, Blue, Green (comma-separated)"
+                            data-testid="input-colors"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Separate multiple colors with commas
+                          </p>
+                        </div>
+                        <div>
+                          <Label htmlFor="sizes">Available Sizes (Optional)</Label>
+                          <Input
+                            id="sizes"
+                            {...productForm.register("sizes")}
+                            placeholder="e.g., S, M, L, XL (comma-separated)"
+                            data-testid="input-sizes"
+                          />
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Separate multiple sizes with commas
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Tags */}
+                      <div>
+                        <Label htmlFor="tags">Tags/Keywords (Optional)</Label>
+                        <Input
+                          id="tags"
+                          {...productForm.register("tags")}
+                          placeholder="e.g., electronics, smartphone, trending (comma-separated)"
+                          data-testid="input-tags"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Help customers find your product with relevant keywords
+                        </p>
+                      </div>
+
+                      {/* Product Type Options */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="isDigitalProduct"
+                            {...productForm.register("isDigitalProduct")}
+                            data-testid="checkbox-is-digital-product"
+                          />
+                          <Label htmlFor="isDigitalProduct">Digital Product (No shipping required)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            id="isFeatured"
+                            {...productForm.register("isFeatured")}
+                            data-testid="checkbox-is-featured"
+                          />
+                          <Label htmlFor="isFeatured">Featured Product (Highlight in homepage)</Label>
+                        </div>
                       </div>
                     </div>
 
