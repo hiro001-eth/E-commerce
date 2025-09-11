@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { ProductDTO as Product } from "@shared/schema";
+import { formatCurrency } from "@/lib/currency";
 
 interface ProductCardProps {
   product: Product;
@@ -84,15 +85,15 @@ export default function ProductCard({ product }: ProductCardProps) {
             {hasDiscount ? (
               <>
                 <span className="text-xl font-bold text-primary" data-testid={`text-discount-price-${product.id}`}>
-                  ${discountPrice!.toFixed(2)}
+                  {formatCurrency(discountPrice!)}
                 </span>
                 <span className="text-sm text-muted-foreground line-through" data-testid={`text-original-price-${product.id}`}>
-                  ${price.toFixed(2)}
+                  {formatCurrency(price)}
                 </span>
               </>
             ) : (
               <span className="text-xl font-bold text-primary" data-testid={`text-price-${product.id}`}>
-                ${price.toFixed(2)}
+                {formatCurrency(price)}
               </span>
             )}
           </div>
@@ -116,14 +117,14 @@ export default function ProductCard({ product }: ProductCardProps) {
               <div className="flex items-center justify-between">
                 <span>Delivery fee:</span>
                 <span className="font-medium" data-testid={`delivery-fee-${product.id}`}>
-                  {parseFloat(product.vendor.deliveryFee) === 0 ? "Free" : `$${parseFloat(product.vendor.deliveryFee).toFixed(2)}`}
+                  {parseFloat(product.vendor.deliveryFee) === 0 ? "Free" : formatCurrency(parseFloat(product.vendor.deliveryFee))}
                 </span>
               </div>
               {parseFloat(product.vendor.freeDeliveryThreshold) > 0 && parseFloat(product.vendor.deliveryFee) > 0 && (
                 <div className="flex items-center justify-between">
                   <span>Free delivery over:</span>
                   <span className="font-medium text-green-600" data-testid={`free-delivery-threshold-${product.id}`}>
-                    ${parseFloat(product.vendor.freeDeliveryThreshold).toFixed(2)}
+                    {formatCurrency(parseFloat(product.vendor.freeDeliveryThreshold))}
                   </span>
                 </div>
               )}

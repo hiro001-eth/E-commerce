@@ -13,6 +13,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, CreditCard, Truck, MapPin } from "lucide-react";
 import type { CartItemDTO as CartItem } from "@shared/schema";
+import { formatCurrency } from "@/lib/currency";
 
 const checkoutSchema = z.object({
   deliveryAddress: z.object({
@@ -327,7 +328,7 @@ export default function CheckoutForm({ cartItems, onBack, onSuccess }: CheckoutF
               disabled={isSubmitting}
               data-testid="button-place-order"
             >
-              {isSubmitting ? "Placing Order..." : `Place Order - $${total.toFixed(2)}`}
+              {isSubmitting ? "Placing Order..." : `Place Order - ${formatCurrency(total)}`}
             </Button>
           </form>
         </div>
@@ -350,7 +351,7 @@ export default function CheckoutForm({ cartItems, onBack, onSuccess }: CheckoutF
                   </div>
                   <div className="text-right">
                     <p className="font-medium">
-                      ${(parseFloat(item.product?.discountPrice || item.product?.price || "0") * item.quantity).toFixed(2)}
+                      {formatCurrency(parseFloat(item.product?.discountPrice || item.product?.price || "0") * item.quantity)}
                     </p>
                   </div>
                 </div>
@@ -359,7 +360,7 @@ export default function CheckoutForm({ cartItems, onBack, onSuccess }: CheckoutF
               <div className="border-t pt-4">
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span>Total:</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>{formatCurrency(total)}</span>
                 </div>
               </div>
             </CardContent>

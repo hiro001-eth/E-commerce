@@ -11,7 +11,7 @@ import {
   Users, 
   Store, 
   Package, 
-  DollarSign, 
+  Banknote, 
   TrendingUp, 
   Settings, 
   Search,
@@ -22,6 +22,7 @@ import {
   BarChart3
 } from "lucide-react";
 import type { User as UserType, Vendor, Product, Order } from "@shared/schema";
+import { formatCurrency } from "@/lib/currency";
 
 export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -246,11 +247,11 @@ export default function AdminDashboard() {
                         <div>
                           <p className="text-muted-foreground text-sm">Revenue</p>
                           <p className="text-2xl font-bold text-foreground" data-testid="text-revenue-stat">
-                            ${stats?.revenue?.toFixed(2) || orders.reduce((sum: number, order: Order) => sum + parseFloat(order.total), 0).toFixed(2)}
+                            {formatCurrency(stats?.revenue || orders.reduce((sum: number, order: Order) => sum + parseFloat(order.total), 0))}
                           </p>
                           <p className="text-xs text-chart-2">+22% from last month</p>
                         </div>
-                        <DollarSign className="w-8 h-8 text-chart-4" />
+                        <Banknote className="w-8 h-8 text-chart-4" />
                       </div>
                     </CardContent>
                   </Card>

@@ -13,9 +13,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Store, Package, BarChart3, Settings, Plus, Edit, Trash2, DollarSign, Upload, X, Eye, EyeOff } from "lucide-react";
+import { Store, Package, BarChart3, Settings, Plus, Edit, Trash2, Banknote, Upload, X, Eye, EyeOff } from "lucide-react";
 import type { User as UserType, Product, Order, Vendor, Category } from "@shared/schema";
 import { vendorSettingsSchema, changePasswordSchema, changeEmailSchema } from "@shared/schema";
+import { formatCurrency } from "@/lib/currency";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -492,10 +493,10 @@ export default function VendorDashboard() {
                         <div>
                           <p className="text-muted-foreground text-sm">Total Sales</p>
                           <p className="text-2xl font-bold text-foreground" data-testid="text-total-sales">
-                            ${stats.totalSales.toFixed(2)}
+                            {formatCurrency(stats.totalSales)}
                           </p>
                         </div>
-                        <DollarSign className="w-8 h-8 text-chart-2" />
+                        <Banknote className="w-8 h-8 text-chart-2" />
                       </div>
                     </CardContent>
                   </Card>

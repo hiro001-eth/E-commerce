@@ -8,6 +8,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { CartItemDTO as CartItem } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
 import CheckoutForm from "@/components/checkout-form";
+import { formatCurrency } from "@/lib/currency";
 
 interface CartSidebarProps {
   isOpen: boolean;
@@ -145,7 +146,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
                           {item.product?.name}
                         </h4>
                         <p className="text-sm text-muted-foreground" data-testid={`text-price-${item.id}`}>
-                          ${item.product?.discountPrice || item.product?.price}
+                          {formatCurrency(parseFloat(item.product?.discountPrice || item.product?.price || "0"))}
                         </p>
                         
                         <div className="flex items-center mt-2">
@@ -198,7 +199,7 @@ export default function CartSidebar({ isOpen, onClose }: CartSidebarProps) {
               <div className="flex justify-between items-center mb-4">
                 <span className="font-semibold text-foreground">Total:</span>
                 <span className="font-bold text-lg text-primary" data-testid="text-cart-total">
-                  ${total.toFixed(2)}
+                  {formatCurrency(total)}
                 </span>
               </div>
               
