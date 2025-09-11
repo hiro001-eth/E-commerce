@@ -254,6 +254,18 @@ router.get("/api/products", async (req, res) => {
   }
 });
 
+// Get vendor's own products
+router.get("/api/products/vendor", requireVendor, async (req, res) => {
+  try {
+    const user = req.user as User;
+    const products = await storage.getVendorProducts(user.id);
+    res.json(products);
+  } catch (error) {
+    console.error("Error fetching vendor products:", error);
+    res.status(500).json({ message: "Failed to fetch vendor products" });
+  }
+});
+
 router.get("/api/products/:id", async (req, res) => {
   try {
     const product = await storage.getProductById(req.params.id);
@@ -644,9 +656,36 @@ router.get("/api/vendor/settings", requireVendor, async (req, res) => {
   }
 });
 
+const vendorSettingsUpdateSchema = z.object({
+  storeName: z.string().min(1).max(100).optional(),
+  storeDescription: z.string().max(1000).optional(),
+  contactEmail: z.string().email().optional(),
+  contactPhone: z.string().optional(),
+  address: z.string().optional(),
+  website: z.string().url().optional(),
+  logo: z.string().optional(),
+  emailNotifications: z.boolean().optional(),
+  smsNotifications: z.boolean().optional(),
+  orderNotifications: z.boolean().optional(),
+  reviewNotifications: z.boolean().optional(),
+  promotionalEmails: z.boolean().optional(),
+  paypalEmail: z.string().email().optional(),
+  bankAccountNumber: z.string().optional(),
+  bankRoutingNumber: z.string().optional(),
+  stripeAccountId: z.string().optional(),
+});
+
 router.put("/api/vendor/settings", requireVendor, async (req, res) => {
   try {
-    const settings = await storage.updateVendorSettings((req.user as User).id, req.body);
+    const result = vendorSettingsUpdateSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+    
+    const settings = await storage.updateVendorSettings((req.user as User).id, result.data);
     res.json(settings);
   } catch (error) {
     console.error("Error updating vendor settings:", error);
@@ -656,7 +695,23 @@ router.put("/api/vendor/settings", requireVendor, async (req, res) => {
 
 router.put("/api/vendor/notifications", requireVendor, async (req, res) => {
   try {
-    const settings = await storage.updateVendorSettings((req.user as User).id, req.body);
+    const notificationSchema = z.object({
+      emailNotifications: z.boolean().optional(),
+      smsNotifications: z.boolean().optional(),
+      orderNotifications: z.boolean().optional(),
+      reviewNotifications: z.boolean().optional(),
+      promotionalEmails: z.boolean().optional(),
+    });
+    
+    const result = notificationSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+    
+    const settings = await storage.updateVendorSettings((req.user as User).id, result.data);
     res.json(settings);
   } catch (error) {
     console.error("Error updating notification settings:", error);
@@ -666,7 +721,22 @@ router.put("/api/vendor/notifications", requireVendor, async (req, res) => {
 
 router.put("/api/vendor/payment", requireVendor, async (req, res) => {
   try {
-    const settings = await storage.updateVendorSettings((req.user as User).id, req.body);
+    const paymentSchema = z.object({
+      paypalEmail: z.string().email().optional(),
+      bankAccountNumber: z.string().optional(),
+      bankRoutingNumber: z.string().optional(),
+      stripeAccountId: z.string().optional(),
+    });
+    
+    const result = paymentSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+    
+    const settings = await storage.updateVendorSettings((req.user as User).id, result.data);
     res.json(settings);
   } catch (error) {
     console.error("Error updating payment settings:", error);

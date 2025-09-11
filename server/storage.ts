@@ -387,6 +387,54 @@ export class MemStorage implements IStorage {
     this.initializeData().catch(console.error);
   }
 
+  // Add missing methods for stats and recent reviews
+  async getStats(): Promise<{
+    totalUsers: number;
+    totalProducts: number;
+    totalOrders: number;
+    totalRevenue: number;
+    activeStores: number;
+    productsListed: number;
+  }> {
+    const totalUsers = this.users.size;
+    const totalProducts = this.products.size;
+    const totalOrders = this.orders.size;
+    
+    const totalRevenue = Array.from(this.orders.values())
+      .filter(order => order.status === 'completed' || order.status === 'paid')
+      .reduce((sum, order) => sum + parseFloat(order.total || "0"), 0);
+
+    const activeStores = Array.from(this.vendors.values())
+      .filter(vendor => vendor.isApproved).length;
+
+    const productsListed = totalProducts;
+
+    return {
+      totalUsers,
+      totalProducts,
+      totalOrders,
+      totalRevenue,
+      activeStores,
+      productsListed,
+    };
+  }
+
+  async getRecentReviews(limit: number = 10): Promise<Review[]> {
+    return Array.from(this.reviews.values())
+      .sort((a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime())
+      .slice(0, limit);
+  }
+
+  async getUserById(id: string): Promise<User | null> {
+    return this.users.get(id) || null;
+  }
+
+  async getVendorProducts(vendorId: string): Promise<Product[]> {
+    return Array.from(this.products.values())
+      .filter(product => product.vendorId === vendorId)
+      .sort((a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime());
+  }
+
   private async initializeData() {
     // Create default admin user with hashed password
     const adminId = randomUUID();
@@ -394,7 +442,7 @@ export class MemStorage implements IStorage {
     const admin: User = {
       id: adminId,
       username: "admin",
-      email: "admin@localhost",
+      email: "admin@dokan.com",
       password: hashedPassword,
       role: "admin",
       firstName: "Admin",

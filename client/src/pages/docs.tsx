@@ -1,184 +1,263 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { FileText, Code, Database, Shield, Zap, Users, GitBranch, ExternalLink } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { BookOpen, Users, ShoppingCart, HelpCircle, MessageSquare, Globe } from "lucide-react";
+import { Link } from "wouter";
 
 export default function TechnicalDocs() {
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <section className="bg-gradient-to-r from-primary/10 to-primary/5 py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center">
-            <FileText className="w-16 h-16 text-primary mx-auto mb-4" />
-            <h1 className="text-4xl font-bold text-foreground mb-4">
-              Technical Documentation
-            </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Platform overview and general information for users and businesses
-            </p>
-          </div>
-        </div>
-      </section>
-
-      {/* Architecture Overview */}
-      <section className="py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl font-bold text-foreground mb-4">System Architecture</h2>
-            <p className="text-xl text-muted-foreground">Modern, scalable multi-vendor e-commerce platform</p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <Code className="w-12 h-12 text-chart-1 mb-4" />
-                <h3 className="font-semibold text-foreground mb-3">Frontend Stack</h3>
-                <div className="space-y-2 text-sm">
-                  <Badge variant="secondary">React 18</Badge>
-                  <Badge variant="secondary">TypeScript</Badge>
-                  <Badge variant="secondary">Vite</Badge>
-                  <Badge variant="secondary">TailwindCSS</Badge>
-                  <Badge variant="secondary">Shadcn/ui</Badge>
-                  <Badge variant="secondary">React Hook Form</Badge>
-                  <Badge variant="secondary">TanStack Query</Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <Database className="w-12 h-12 text-chart-2 mb-4" />
-                <h3 className="font-semibold text-foreground mb-3">Backend Stack</h3>
-                <div className="space-y-2 text-sm">
-                  <Badge variant="secondary">Node.js</Badge>
-                  <Badge variant="secondary">Express</Badge>
-                  <Badge variant="secondary">TypeScript</Badge>
-                  <Badge variant="secondary">Drizzle ORM</Badge>
-                  <Badge variant="secondary">PostgreSQL</Badge>
-                  <Badge variant="secondary">Multer</Badge>
-                  <Badge variant="secondary">Express Session</Badge>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <Shield className="w-12 h-12 text-chart-3 mb-4" />
-                <h3 className="font-semibold text-foreground mb-3">Security & Tools</h3>
-                <div className="space-y-2 text-sm">
-                  <Badge variant="secondary">BCrypt</Badge>
-                  <Badge variant="secondary">CORS</Badge>
-                  <Badge variant="secondary">Helmet</Badge>
-                  <Badge variant="secondary">Rate Limiting</Badge>
-                  <Badge variant="secondary">Input Validation</Badge>
-                  <Badge variant="secondary">File Upload Security</Badge>
-                  <Badge variant="secondary">Session Management</Badge>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Platform Features */}
-      <section className="py-16 bg-muted/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-foreground text-center mb-12">Platform Features</h2>
-          
-          <div className="grid lg:grid-cols-2 gap-8">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Users className="w-5 h-5 mr-2 text-primary" />
-                  User Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <p>• Secure user registration and authentication</p>
-                  <p>• Role-based access control (Customer, Vendor, Admin)</p>
-                  <p>• Profile management and settings</p>
-                  <p>• Password security and account protection</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Database className="w-5 h-5 mr-2 text-primary" />
-                  Product Management
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <p>• Comprehensive product catalog</p>
-                  <p>• Category-based organization</p>
-                  <p>• Advanced search and filtering</p>
-                  <p>• Inventory management for vendors</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <GitBranch className="w-5 h-5 mr-2 text-primary" />
-                  Order Processing
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <p>• Streamlined checkout process</p>
-                  <p>• Order tracking and management</p>
-                  <p>• Payment processing integration</p>
-                  <p>• Delivery coordination</p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Zap className="w-5 h-5 mr-2 text-primary" />
-                  Customer Experience
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3 text-sm">
-                  <p>• Shopping cart and wishlist functionality</p>
-                  <p>• Product reviews and ratings</p>
-                  <p>• Personalized recommendations</p>
-                  <p>• Customer support integration</p>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </section>
-
-      {/* Support */}
-      <section className="py-16 bg-primary text-primary-foreground">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Need Technical Support?</h2>
-          <p className="text-xl opacity-90 mb-8">
-            Our development team is here to help with technical questions and integration issues
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-foreground mb-4">Help Center</h1>
+          <p className="text-muted-foreground text-lg">
+            Everything you need to know about using Dokan marketplace
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="secondary" asChild>
-              <a href="/contact" data-testid="button-contact-tech-support">
-                Contact Technical Support <ExternalLink className="ml-2 w-4 h-4" />
-              </a>
-            </Button>
-            <Button size="lg" variant="outline" asChild>
-              <a href="/faq" data-testid="button-view-faq">
-                View FAQ
-              </a>
-            </Button>
-          </div>
         </div>
-      </section>
+
+        <Tabs defaultValue="getting-started" className="space-y-6">
+          <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full">
+            <TabsTrigger value="getting-started">Getting Started</TabsTrigger>
+            <TabsTrigger value="buying-guide">Buying Guide</TabsTrigger>
+            <TabsTrigger value="selling-guide">Selling Guide</TabsTrigger>
+            <TabsTrigger value="support">Support</TabsTrigger>
+          </TabsList>
+
+          {/* Getting Started */}
+          <TabsContent value="getting-started" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <BookOpen className="mr-2" />
+                  Welcome to Dokan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <p className="text-muted-foreground">
+                    Dokan is a multi-vendor e-commerce platform connecting buyers and sellers in Nepal. 
+                    Here's how to get started:
+                  </p>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">For Buyers</h3>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Browse thousands of products from verified vendors</li>
+                        <li>• Create an account to track orders and reviews</li>
+                        <li>• Add items to cart and wishlist</li>
+                        <li>• Pay securely with multiple payment options</li>
+                      </ul>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <h3 className="font-semibold mb-2">For Sellers</h3>
+                      <ul className="text-sm text-muted-foreground space-y-1">
+                        <li>• Register as a vendor and set up your store</li>
+                        <li>• List your products with detailed descriptions</li>
+                        <li>• Manage orders and customer communications</li>
+                        <li>• Track your sales and performance</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Buying Guide */}
+          <TabsContent value="buying-guide" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <ShoppingCart className="mr-2" />
+                  How to Buy on Dokan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold mb-3">Step 1: Browse & Search</h3>
+                    <p className="text-muted-foreground mb-2">
+                      Use our advanced search and filtering system to find exactly what you need:
+                    </p>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• Filter by category, price range, and ratings</li>
+                      <li>• Sort by popularity, price, or newest arrivals</li>
+                      <li>• Check product reviews and vendor ratings</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-3">Step 2: Add to Cart</h3>
+                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
+                      <li>• Select quantity and product variants (if available)</li>
+                      <li>• Review product details and shipping information</li>
+                      <li>• Add to wishlist for later purchase</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-3">Step 3: Checkout & Payment</h3>
+                    <p className="text-muted-foreground mb-2">We accept multiple payment methods:</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">eSewa</Badge>
+                      <Badge variant="outline">IME Pay</Badge>
+                      <Badge variant="outline">Visa Card</Badge>
+                      <Badge variant="outline">Credit Cards</Badge>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Selling Guide */}
+          <TabsContent value="selling-guide" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="mr-2" />
+                  How to Sell on Dokan
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold mb-3">Getting Started as a Vendor</h3>
+                    <ul className="text-sm text-muted-foreground space-y-2 ml-4">
+                      <li>• Create your vendor account with business details</li>
+                      <li>• Set up your store profile and payment preferences</li>
+                      <li>• Upload your business license and verification documents</li>
+                      <li>• Wait for approval from our team</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-3">Managing Your Products</h3>
+                    <ul className="text-sm text-muted-foreground space-y-2 ml-4">
+                      <li>• Upload high-quality product images</li>
+                      <li>• Write detailed product descriptions</li>
+                      <li>• Set competitive pricing in NPR</li>
+                      <li>• Manage inventory and stock levels</li>
+                      <li>• Configure product variants (colors, sizes)</li>
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold mb-3">Order Management</h3>
+                    <ul className="text-sm text-muted-foreground space-y-2 ml-4">
+                      <li>• Receive instant notifications for new orders</li>
+                      <li>• Update order status and tracking information</li>
+                      <li>• Communicate with customers through our platform</li>
+                      <li>• Handle returns and refunds professionally</li>
+                    </ul>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Support */}
+          <TabsContent value="support" className="space-y-6">
+            <div className="grid gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <HelpCircle className="mr-2" />
+                    Frequently Asked Questions
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-medium mb-2">How do I track my order?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Once your order is shipped, you'll receive a tracking number via email and SMS. 
+                        You can also check order status in your dashboard.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">What is your return policy?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        We offer a 7-day return policy for most items. Products must be in original 
+                        condition with all packaging and accessories.
+                      </p>
+                    </div>
+                    <div>
+                      <h4 className="font-medium mb-2">How do I become a verified vendor?</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Submit your business license, tax registration, and other required documents. 
+                        Our team will review and approve your application within 2-3 business days.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <MessageSquare className="mr-2" />
+                    Contact Support
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">
+                    Need help? Our support team is here to assist you with any questions or issues.
+                  </p>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2">Live Chat</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Get instant help from our AI chatbot, available 24/7 in the bottom-right corner.
+                      </p>
+                    </div>
+                    <div className="p-4 border rounded-lg">
+                      <h4 className="font-medium mb-2">Email Support</h4>
+                      <p className="text-sm text-muted-foreground mb-3">
+                        Send us an email and we'll respond within 24 hours.
+                      </p>
+                      <Link href="/contact" className="text-primary hover:underline text-sm">
+                        Contact Form →
+                      </Link>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Globe className="mr-2" />
+                    Additional Resources
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <Link href="/vendor-guide" className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <h4 className="font-medium mb-2">Vendor Guide</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Complete guide for becoming a successful vendor
+                      </p>
+                    </Link>
+                    <Link href="/terms" className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <h4 className="font-medium mb-2">Terms of Service</h4>
+                      <p className="text-sm text-muted-foreground">
+                        Our platform terms and conditions
+                      </p>
+                    </Link>
+                    <Link href="/privacy" className="p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                      <h4 className="font-medium mb-2">Privacy Policy</h4>
+                      <p className="text-sm text-muted-foreground">
+                        How we protect your personal information
+                      </p>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
