@@ -501,15 +501,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get current vendor information
+  // Get current vendor information with auto-creation for vendor-role users
   app.get("/api/vendors/me", requireAuth, async (req, res) => {
     try {
-      const vendor = await storage.getVendorByUserId(req.session.user!.id);
+      let vendor = await storage.getVendorByUserId(req.session.user!.id);
+      
+      // Auto-create vendor record if user has vendor role but no vendor record (legacy users)
+      if (!vendor && req.session.user!.role === "vendor") {
+        const user = await storage.getUser(req.session.user!.id);
+        if (user && user.role === "vendor") {
+          vendor = await storage.createVendor({
+            userId: user.id,
+            storeName: `${user.firstName} ${user.lastName}'s Store`,
+            isApproved: true,
+          });
+        }
+      }
+      
       if (!vendor) {
         return res.status(404).json({ message: "Vendor not found" });
       }
       res.json(mapVendorToDTO(vendor));
     } catch (error) {
+      console.error("Vendor lookup error:", error);
       res.status(500).json({ message: "Internal server error" });
     }
   });

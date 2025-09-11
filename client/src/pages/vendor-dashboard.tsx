@@ -41,23 +41,13 @@ export default function VendorDashboard() {
     queryKey: ["/api/auth/me"],
   });
 
-  const { data: vendor } = useQuery<Vendor>({
+  const { data: vendor, error: vendorError, isLoading: vendorLoading } = useQuery<Vendor>({
     queryKey: ["/api/vendors/me"],
-    queryFn: async () => {
-      const response = await fetch("/api/vendors/me", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch vendor data");
-      return response.json();
-    },
     enabled: !!authData?.user,
   });
 
-  const { data: products = [], isLoading: productsLoading } = useQuery<Product[]>({
+  const { data: products = [], isLoading: productsLoading, error: productsError } = useQuery<Product[]>({
     queryKey: ["/api/products/vendor"],
-    queryFn: async () => {
-      const response = await fetch("/api/products/vendor", { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch products");
-      return response.json();
-    },
     enabled: !!authData?.user,
   });
 
@@ -436,6 +426,28 @@ export default function VendorDashboard() {
                       {[...Array(3)].map((_, i) => (
                         <div key={i} className="animate-pulse h-16 bg-muted rounded"></div>
                       ))}
+                    </div>
+                  ) : productsError ? (
+                    <div className="text-center py-8">
+                      <Package className="w-12 h-12 text-destructive mx-auto mb-4" />
+                      <p className="text-destructive font-medium mb-2">Unable to load products</p>
+                      <p className="text-muted-foreground text-sm mb-4">
+                        {productsError.message.includes('403') || productsError.message.includes('Vendor not found') 
+                          ? 'Your vendor account needs to be set up. Please contact support or try logging out and back in.'
+                          : productsError.message.includes('401') || productsError.message.includes('Authentication') 
+                          ? 'Please log in again to access your products.'
+                          : 'There was an error loading your products. Please try refreshing the page.'}
+                      </p>
+                      <Button
+                        onClick={() => {
+                          queryClient.invalidateQueries({ queryKey: ["/api/products/vendor"] });
+                          queryClient.invalidateQueries({ queryKey: ["/api/vendors/me"] });
+                        }}
+                        variant="outline"
+                        data-testid="button-retry-products"
+                      >
+                        Try Again
+                      </Button>
                     </div>
                   ) : products.length === 0 ? (
                     <div className="text-center py-8">
