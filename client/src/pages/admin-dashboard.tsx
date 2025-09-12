@@ -51,6 +51,10 @@ export default function AdminDashboard() {
     queryKey: ["/api/admin/vendors"],
   });
 
+  const { data: pendingVendors = [] } = useQuery<Vendor[]>({
+    queryKey: ["/api/admin/vendors/pending"],
+  });
+
   const { data: orders = [] } = useQuery<Order[]>({
     queryKey: ["/api/orders"],
   });
@@ -59,7 +63,33 @@ export default function AdminDashboard() {
     queryKey: ["/api/products"],
   });
 
-  // Note: Vendor approval is now automatic - no manual approval needed
+  const approveVendorMutation = useMutation({
+    mutationFn: (vendorId: string) =>
+      apiRequest("PATCH", `/api/admin/vendors/${vendorId}/approve`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendors/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "Vendor approved successfully" });
+    },
+    onError: () => {
+      toast({ title: "Failed to approve vendor", variant: "destructive" });
+    },
+  });
+
+  const rejectVendorMutation = useMutation({
+    mutationFn: (vendorId: string) =>
+      apiRequest("PATCH", `/api/admin/vendors/${vendorId}/reject`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendors"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/vendors/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+      toast({ title: "Vendor application rejected" });
+    },
+    onError: () => {
+      toast({ title: "Failed to reject vendor", variant: "destructive" });
+    },
+  });
 
   const toggleUserStatusMutation = useMutation({
     mutationFn: ({ userId, isActive }: { userId: string; isActive: boolean }) =>
@@ -99,8 +129,8 @@ export default function AdminDashboard() {
     v.storeName.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // All vendors are automatically approved upon registration
-  const recentVendors = vendors.slice(0, 5);
+  // Recent vendors that are approved
+  const recentVendors = vendors.filter(v => v.isApproved).slice(0, 5);
   const recentOrders = orders.slice(0, 5);
 
   if (!user || user.role !== "admin") {
@@ -160,6 +190,20 @@ export default function AdminDashboard() {
               >
                 <Store className="w-4 h-4 mr-2" />
                 Vendors
+              </Button>
+              <Button
+                variant={activeTab === "pending-vendors" ? "default" : "ghost"}
+                className="w-full justify-start"
+                onClick={() => setActiveTab("pending-vendors")}
+                data-testid="nav-pending-vendors"
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Pending Vendors
+                {pendingVendors.length > 0 && (
+                  <Badge variant="destructive" className="ml-auto">
+                    {pendingVendors.length}
+                  </Badge>
+                )}
               </Button>
               <Button
                 variant={activeTab === "orders" ? "default" : "ghost"}
@@ -501,6 +545,105 @@ export default function AdminDashboard() {
                         </tbody>
                       </table>
                     </div>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Pending Vendors Tab */}
+            {activeTab === "pending-vendors" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Pending Vendor Applications</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      Review and approve new vendor applications
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    {pendingVendors.length === 0 ? (
+                      <div className="text-center py-8">
+                        <CheckCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">No pending vendor applications</p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          All vendor applications have been processed
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {pendingVendors.map((vendor: Vendor) => (
+                          <div
+                            key={vendor.id}
+                            className="border border-border rounded-lg p-6"
+                            data-testid={`pending-vendor-${vendor.id}`}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <h3 className="text-lg font-semibold" data-testid={`text-pending-store-name-${vendor.id}`}>
+                                    {vendor.storeName}
+                                  </h3>
+                                  <Badge variant="secondary">Pending Review</Badge>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Store Description</p>
+                                    <p className="text-sm" data-testid={`text-pending-description-${vendor.id}`}>
+                                      {vendor.storeDescription || "No description provided"}
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Business License</p>
+                                    <p className="text-sm" data-testid={`text-pending-license-${vendor.id}`}>
+                                      {vendor.businessLicense || "Not provided"}
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Delivery Info</p>
+                                    <div className="text-sm">
+                                      <p>Radius: {vendor.deliveryRadius}km</p>
+                                      <p>Fee: {formatCurrency(parseFloat(vendor.deliveryFee || "0"))}</p>
+                                      <p>Free delivery over: {formatCurrency(parseFloat(vendor.freeDeliveryThreshold || "0"))}</p>
+                                    </div>
+                                  </div>
+                                  
+                                  <div>
+                                    <p className="text-sm text-muted-foreground">Applied Date</p>
+                                    <p className="text-sm">
+                                      {vendor.createdAt ? new Date(vendor.createdAt).toLocaleDateString() : 'Recently'}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div className="flex gap-2 pt-4 border-t border-border">
+                              <Button
+                                onClick={() => approveVendorMutation.mutate(vendor.id)}
+                                disabled={approveVendorMutation.isPending}
+                                className="bg-green-600 hover:bg-green-700"
+                                data-testid={`button-approve-vendor-${vendor.id}`}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                {approveVendorMutation.isPending ? "Approving..." : "Approve"}
+                              </Button>
+                              <Button
+                                variant="destructive"
+                                onClick={() => rejectVendorMutation.mutate(vendor.id)}
+                                disabled={rejectVendorMutation.isPending}
+                                data-testid={`button-reject-vendor-${vendor.id}`}
+                              >
+                                <XCircle className="w-4 h-4 mr-2" />
+                                {rejectVendorMutation.isPending ? "Rejecting..." : "Reject"}
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
