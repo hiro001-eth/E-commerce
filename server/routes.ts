@@ -21,7 +21,7 @@ import {
   type User, 
   type Product,
   type Review,
-  type CartItem,
+  type CartItemDTO,
   type Order,
   type OrderItem
 } from "../shared/schema";
@@ -31,12 +31,17 @@ const router = express.Router();
 // Session configuration
 import MemoryStoreFactory from 'memorystore';
 const MemoryStore = MemoryStoreFactory(session);
-const sessionStore = new MemoryStore();
-
-// Initialize Stripe
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
+const sessionStore = new MemoryStore({
+  checkPeriod: 86400000, // prune expired entries every 24h
 });
+
+// Initialize Stripe conditionally
+let stripe: Stripe | null = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: "2023-10-16",
+  });
+}
 
 // Multer configuration for file uploads
 const storage_multer = multer.diskStorage({
