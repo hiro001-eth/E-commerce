@@ -15,6 +15,7 @@ import {
   type InsertCoupon,
   type Category,
   type OrderItem,
+  type InsertOrderItem,
   type Wishlist,
   type InsertWishlist,
 } from "@shared/schema";
@@ -292,6 +293,7 @@ export interface IStorage {
 
   // Product methods
   getProduct(id: string): Promise<Product | undefined>;
+  getProductById(id: string): Promise<Product | undefined>;
   getProductsByVendor(vendorId: string): Promise<Product[]>;
   getAllProducts(): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
@@ -315,6 +317,7 @@ export interface IStorage {
   createOrder(order: InsertOrder): Promise<Order>;
   updateOrderStatus(id: string, status: string): Promise<Order | undefined>;
   getOrderItemsByOrder(orderId: string): Promise<OrderItem[]>;
+  createOrderItem(orderItem: InsertOrderItem): Promise<OrderItem>;
 
   // Review methods
   getReviewsByProduct(productId: string): Promise<Review[]>;
@@ -591,6 +594,10 @@ export class MemStorage implements IStorage {
     return this.products.get(id);
   }
 
+  async getProductById(id: string): Promise<Product | undefined> {
+    return this.products.get(id);
+  }
+
   async getProductsByVendor(vendorId: string): Promise<Product[]> {
     return Array.from(this.products.values()).filter(product => product.vendorId === vendorId);
   }
@@ -799,6 +806,16 @@ export class MemStorage implements IStorage {
 
   async getOrderItemsByOrder(orderId: string): Promise<OrderItem[]> {
     return Array.from(this.orderItems.values()).filter(item => item.orderId === orderId);
+  }
+
+  async createOrderItem(insertOrderItem: InsertOrderItem): Promise<OrderItem> {
+    const id = randomUUID();
+    const orderItem: OrderItem = {
+      ...insertOrderItem,
+      id,
+    };
+    this.orderItems.set(id, orderItem);
+    return orderItem;
   }
 
   // Review methods

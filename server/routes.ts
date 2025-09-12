@@ -16,6 +16,7 @@ import {
   insertProductSchema, 
   insertCategorySchema,
   insertOrderSchema,
+  insertOrderItemSchema,
   insertReviewSchema,
   insertWishlistSchema,
   type User, 
@@ -340,9 +341,15 @@ router.post("/api/products", requireVendor, upload.array('images', 5), async (re
       images: (req.files as Express.Multer.File[])?.map(file => `/uploads/${file.filename}`) || []
     };
 
+    // Get vendor for the user if they're a vendor
+    let vendorRecord = null;
+    if (user.role === 'vendor') {
+      vendorRecord = await storage.getVendorByUserId(user.id);
+    }
+
     const result = insertProductSchema.safeParse({
       ...productData,
-      vendorId: vendor.id  // Use vendor.id instead of user.id
+      vendorId: vendorRecord ? vendorRecord.id : user.id  // Use vendor.id if available, fallback to user.id
     });
 
     if (!result.success) {
@@ -470,7 +477,7 @@ router.post("/api/categories", requireAdmin, async (req, res) => {
       });
     }
 
-    const newCategory = await storage.createCategory(result.data);
+    const newCategory = await storage.createCategory(result.data.name, result.data.description);
     res.status(201).json(newCategory);
   } catch (error) {
     console.error("Error creating category:", error);
@@ -518,7 +525,7 @@ router.patch("/api/admin/vendors/:id/reject", requireAdmin, async (req, res) => 
 // Cart routes
 router.get("/api/cart", requireAuth, async (req, res) => {
   try {
-    const cartItems = await storage.getCartItems((req.user as User).id);
+    const cartItems = await storage.getCartByUser((req.user as User).id);
     res.json(cartItems);
   } catch (error) {
     console.error("Error fetching cart:", error);
@@ -579,7 +586,7 @@ router.delete("/api/cart/:id", requireAuth, async (req, res) => {
 // Wishlist routes
 router.get("/api/wishlist", requireAuth, async (req, res) => {
   try {
-    const wishlistItems = await storage.getWishlistItems((req.user as User).id);
+    const wishlistItems = await storage.getWishlistByUser((req.user as User).id);
     res.json(wishlistItems);
   } catch (error) {
     console.error("Error fetching wishlist:", error);
@@ -624,7 +631,7 @@ router.delete("/api/wishlist/:productId", requireAuth, async (req, res) => {
 // Review routes
 router.get("/api/products/:productId/reviews", async (req, res) => {
   try {
-    const reviews = await storage.getProductReviews(req.params.productId);
+    const reviews = await storage.getReviewsByProduct(req.params.productId);
     res.json(reviews);
   } catch (error) {
     console.error("Error fetching reviews:", error);
@@ -667,7 +674,7 @@ router.post("/api/reviews", requireAuth, async (req, res) => {
 // Order routes
 router.get("/api/orders", requireAuth, async (req, res) => {
   try {
-    const orders = await storage.getUserOrders((req.user as User).id);
+    const orders = await storage.getOrdersByUser((req.user as User).id);
     res.json(orders);
   } catch (error) {
     console.error("Error fetching orders:", error);
@@ -683,36 +690,218 @@ router.post("/api/orders", requireAuth, async (req, res) => {
       return res.status(400).json({ message: "Order items are required" });
     }
 
-    // Calculate total
-    let totalAmount = 0;
+    if (!shippingAddress) {
+      return res.status(400).json({ message: "Shipping address is required" });
+    }
+
+    // Validate shipping address structure
+    const requiredFields = ['firstName', 'lastName', 'phone', 'street', 'city', 'state', 'zipCode', 'country'];
+    for (const field of requiredFields) {
+      if (!shippingAddress[field]) {
+        return res.status(400).json({ message: `Shipping address ${field} is required` });
+      }
+    }
+
+    // Validate and process items, group by vendor
+    const vendorGroups = new Map<string, { items: any[], totalAmount: number }>();
+    
     for (const item of items) {
+      if (!item.productId || !item.quantity || item.quantity < 1) {
+        return res.status(400).json({ message: "Invalid item format - productId and positive quantity required" });
+      }
+
       const product = await storage.getProductById(item.productId);
       if (!product) {
         return res.status(404).json({ message: `Product ${item.productId} not found` });
       }
+
+      if (!product.isActive) {
+        return res.status(400).json({ message: `Product ${product.name} is no longer available` });
+      }
+
+      if (product.stock < item.quantity) {
+        return res.status(400).json({ message: `Insufficient stock for ${product.name}. Available: ${product.stock}` });
+      }
+
       const price = parseFloat(product.discountPrice || product.price);
-      totalAmount += price * item.quantity;
+      const itemTotal = price * item.quantity;
+      
+      const vendorId = product.vendorId;
+      if (!vendorGroups.has(vendorId)) {
+        vendorGroups.set(vendorId, { items: [], totalAmount: 0 });
+      }
+      
+      const group = vendorGroups.get(vendorId)!;
+      group.items.push({
+        productId: product.id,
+        quantity: item.quantity,
+        price: price.toString(),
+        total: itemTotal.toString()
+      });
+      group.totalAmount += itemTotal;
     }
 
-    const order = await storage.createOrder({
-      userId: (req.user as User).id,
-      items,
-      totalAmount: totalAmount.toString(),
-      status: 'pending',
-      shippingAddress,
-      paymentMethod
-    });
+    // Create separate orders for each vendor
+    const createdOrders: Order[] = [];
+    
+    for (const [vendorId, group] of vendorGroups) {
+      // Validate order data with schema
+      const orderData = {
+        userId: (req.user as User).id,
+        vendorId,
+        total: group.totalAmount.toString(),
+        deliveryAddress: shippingAddress,
+        paymentMethod: paymentMethod || 'cod',
+        status: 'pending'
+      };
 
-    res.status(201).json(order);
+      const orderResult = insertOrderSchema.safeParse(orderData);
+      if (!orderResult.success) {
+        return res.status(400).json({
+          message: "Order validation failed",
+          errors: fromZodError(orderResult.error).details
+        });
+      }
+
+      // Create the order
+      const order = await storage.createOrder(orderResult.data);
+      
+      // Create order items
+      for (const orderItem of group.items) {
+        const orderItemResult = insertOrderItemSchema.safeParse({
+          ...orderItem,
+          orderId: order.id
+        });
+        
+        if (!orderItemResult.success) {
+          return res.status(400).json({
+            message: "Order item validation failed",
+            errors: fromZodError(orderItemResult.error).details
+          });
+        }
+        
+        await storage.createOrderItem(orderItemResult.data);
+      }
+      
+      createdOrders.push(order);
+    }
+
+    // If single vendor, return single order; if multi-vendor, return array
+    if (createdOrders.length === 1) {
+      res.status(201).json(createdOrders[0]);
+    } else {
+      res.status(201).json(createdOrders);
+    }
+    
   } catch (error) {
     console.error("Error creating order:", error);
     res.status(500).json({ message: "Failed to create order" });
   }
 });
 
+// Get order items
+router.get("/api/orders/:id/items", requireAuth, async (req, res) => {
+  try {
+    const order = await storage.getOrder(req.params.id);
+    if (!order) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    
+    const user = req.user as User;
+    
+    // Check authorization based on user role
+    if (user.role === 'customer') {
+      // Customers can only see their own orders
+      if (order.userId !== user.id) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+    } else if (user.role === 'vendor') {
+      // Vendors can only see orders that contain their products
+      const vendor = await storage.getVendorByUserId(user.id);
+      if (!vendor) {
+        return res.status(403).json({ message: "Vendor account not found" });
+      }
+      
+      // Check if this vendor owns this order
+      if (order.vendorId !== vendor.id) {
+        return res.status(403).json({ message: "Access denied - not your order" });
+      }
+    } else if (user.role !== 'admin') {
+      // Only admins, customers, and vendors can access order items
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    const orderItems = await storage.getOrderItemsByOrder(req.params.id);
+    res.json(orderItems);
+  } catch (error) {
+    console.error("Error fetching order items:", error);
+    res.status(500).json({ message: "Failed to fetch order items" });
+  }
+});
+
+// Update order status
+router.put("/api/orders/:id/status", requireVendor, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
+    
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        message: `Invalid status. Valid statuses: ${validStatuses.join(', ')}` 
+      });
+    }
+    
+    const updatedOrder = await storage.updateOrderStatus(req.params.id, status);
+    if (!updatedOrder) {
+      return res.status(404).json({ message: "Order not found" });
+    }
+    
+    res.json(updatedOrder);
+  } catch (error) {
+    console.error("Error updating order status:", error);
+    res.status(500).json({ message: "Failed to update order status" });
+  }
+});
+
+// Get unreviewed orders (for review prompts)
+router.get("/api/orders/unreviewed", requireAuth, async (req, res) => {
+  try {
+    const userId = (req.user as User).id;
+    const orders = await storage.getOrdersByUser(userId);
+    
+    // Filter for delivered orders that don't have reviews yet
+    const unreviewed = [];
+    for (const order of orders.filter(o => o.status === 'delivered')) {
+      const orderItems = await storage.getOrderItemsByOrder(order.id);
+      if (orderItems.length > 0) {
+        // Get product details for the order items
+        const products = [];
+        for (const item of orderItems) {
+          const product = await storage.getProduct(item.productId);
+          if (product) {
+            products.push(product);
+          }
+        }
+        if (products.length > 0) {
+          unreviewed.push({ order, products });
+        }
+      }
+    }
+    
+    res.json(unreviewed);
+  } catch (error) {
+    console.error("Error fetching unreviewed orders:", error);
+    res.status(500).json({ message: "Failed to fetch unreviewed orders" });
+  }
+});
+
 // Stripe payment routes
 router.post("/api/create-payment-intent", requireAuth, async (req, res) => {
   try {
+    if (!stripe) {
+      return res.status(500).json({ message: "Payment processing not configured" });
+    }
+
     const { amount, currency = "npr", orderId } = req.body;
 
     if (!amount || amount <= 0) {
@@ -740,6 +929,10 @@ router.post("/api/create-payment-intent", requireAuth, async (req, res) => {
 
 router.post("/api/confirm-payment", requireAuth, async (req, res) => {
   try {
+    if (!stripe) {
+      return res.status(500).json({ message: "Payment processing not configured" });
+    }
+
     const { paymentIntentId, orderId } = req.body;
 
     if (!paymentIntentId) {
