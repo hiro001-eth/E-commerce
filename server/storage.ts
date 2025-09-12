@@ -343,6 +343,21 @@ export interface IStorage {
   // Location-based filtering methods
   getProductsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Product[]>;
   getVendorsByLocation(filter: { city?: string; state?: string; zipCode?: string; radius?: number }): Promise<Vendor[]>;
+
+  // Image tracking methods
+  trackUploadedImage(userId: string, imagePath: string, imageType: 'review' | 'product' | 'logo'): Promise<void>;
+  verifyImageOwnership(userId: string, imagePath: string): Promise<boolean>;
+  deleteTrackedImage(userId: string, imagePath: string): Promise<boolean>;
+  getUserUploadedImages(userId: string, imageType?: 'review' | 'product' | 'logo'): Promise<string[]>;
+}
+
+// Image upload tracking interface
+interface UploadedImage {
+  id: string;
+  userId: string;
+  imagePath: string;
+  imageType: 'review' | 'product' | 'logo';
+  uploadedAt: Date;
 }
 
 export class MemStorage implements IStorage {
@@ -356,6 +371,7 @@ export class MemStorage implements IStorage {
   private coupons: Map<string, Coupon> = new Map();
   private categories: Map<string, Category> = new Map();
   private orderItems: Map<string, OrderItem> = new Map();
+  private uploadedImages: Map<string, UploadedImage> = new Map();
 
   // Vendor Settings methods
   async getVendorSettings(vendorId: string): Promise<any> {
@@ -1070,6 +1086,46 @@ export class MemStorage implements IStorage {
     });
 
     return locationProducts;
+  }
+
+  // Image tracking methods implementation
+  async trackUploadedImage(userId: string, imagePath: string, imageType: 'review' | 'product' | 'logo'): Promise<void> {
+    const imageId = randomUUID();
+    const uploadedImage: UploadedImage = {
+      id: imageId,
+      userId,
+      imagePath,
+      imageType,
+      uploadedAt: new Date()
+    };
+    this.uploadedImages.set(imageId, uploadedImage);
+  }
+
+  async verifyImageOwnership(userId: string, imagePath: string): Promise<boolean> {
+    const uploadedImage = Array.from(this.uploadedImages.values())
+      .find(img => img.imagePath === imagePath && img.userId === userId);
+    return !!uploadedImage;
+  }
+
+  async deleteTrackedImage(userId: string, imagePath: string): Promise<boolean> {
+    const imageToDelete = Array.from(this.uploadedImages.entries())
+      .find(([_, img]) => img.imagePath === imagePath && img.userId === userId);
+    
+    if (imageToDelete) {
+      this.uploadedImages.delete(imageToDelete[0]);
+      return true;
+    }
+    return false;
+  }
+
+  async getUserUploadedImages(userId: string, imageType?: 'review' | 'product' | 'logo'): Promise<string[]> {
+    return Array.from(this.uploadedImages.values())
+      .filter(img => {
+        if (img.userId !== userId) return false;
+        if (imageType && img.imageType !== imageType) return false;
+        return true;
+      })
+      .map(img => img.imagePath);
   }
 }
 

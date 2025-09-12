@@ -445,7 +445,26 @@ export default function ProductDetails() {
                           </span>
                         </div>
                         {review.comment && (
-                          <p className="text-sm text-foreground">{review.comment}</p>
+                          <p className="text-sm text-foreground mb-3">{review.comment}</p>
+                        )}
+                        
+                        {/* Review Images */}
+                        {review.images && review.images.length > 0 && (
+                          <div className="flex gap-2 flex-wrap mt-3">
+                            {review.images.map((image, imageIndex) => (
+                              <img
+                                key={imageIndex}
+                                src={image}
+                                alt={`Review image ${imageIndex + 1}`}
+                                className="w-20 h-20 object-cover rounded-md border border-border cursor-pointer hover:opacity-80 transition-opacity"
+                                onClick={() => {
+                                  // Open image in a new tab for larger view
+                                  window.open(image, '_blank');
+                                }}
+                                data-testid={`review-image-${review.id}-${imageIndex}`}
+                              />
+                            ))}
+                          </div>
                         )}
                       </div>
                     ))}

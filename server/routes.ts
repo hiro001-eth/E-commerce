@@ -1197,24 +1197,38 @@ router.put("/api/vendor/payment", requireVendor, async (req, res) => {
 });
 
 // Upload routes
-router.post("/api/upload/review-image", requireAuth, upload.single('image'), (req, res) => {
+router.post("/api/upload/review-image", requireAuth, upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No image uploaded" });
     }
-    res.json({ imagePath: `/uploads/${req.file.filename}` });
+    
+    const imagePath = `/uploads/${req.file.filename}`;
+    const userId = (req.user as User).id;
+    
+    // Track the uploaded image for ownership verification
+    await storage.trackUploadedImage(userId, imagePath, 'review');
+    
+    res.json({ imagePath });
   } catch (error) {
     console.error("Review image upload error:", error);
     res.status(500).json({ message: "Image upload failed" });
   }
 });
 
-router.post("/api/upload/store-logo", requireVendor, upload.single('logo'), (req, res) => {
+router.post("/api/upload/store-logo", requireVendor, upload.single('logo'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "No logo uploaded" });
     }
-    res.json({ logoPath: `/uploads/${req.file.filename}` });
+    
+    const logoPath = `/uploads/${req.file.filename}`;
+    const userId = (req.user as User).id;
+    
+    // Track the uploaded logo for ownership verification
+    await storage.trackUploadedImage(userId, logoPath, 'logo');
+    
+    res.json({ logoPath });
   } catch (error) {
     console.error("Store logo upload error:", error);
     res.status(500).json({ message: "Logo upload failed" });
@@ -1224,14 +1238,61 @@ router.post("/api/upload/store-logo", requireVendor, upload.single('logo'), (req
 router.delete("/api/upload/review-image", requireAuth, async (req, res) => {
   try {
     const { imagePath } = req.body;
-    if (imagePath && imagePath.startsWith('/uploads/')) {
-      const filePath = path.join(process.cwd(), 'uploads', path.basename(imagePath));
-      await fs.unlink(filePath);
+    const userId = (req.user as User).id;
+    
+    // Validate input
+    if (!imagePath || typeof imagePath !== 'string') {
+      return res.status(400).json({ message: "Invalid image path provided" });
     }
-    res.json({ message: "Image deleted successfully" });
+    
+    // Security: Only allow deletion of paths that start with /uploads/
+    if (!imagePath.startsWith('/uploads/')) {
+      return res.status(400).json({ message: "Invalid image path format" });
+    }
+    
+    // Security: Verify ownership - only allow users to delete their own uploaded images
+    const isOwner = await storage.verifyImageOwnership(userId, imagePath);
+    if (!isOwner) {
+      return res.status(403).json({ 
+        message: "Access denied: You can only delete images you uploaded" 
+      });
+    }
+    
+    // Security: Only allow deletion of review images from this endpoint
+    const userImages = await storage.getUserUploadedImages(userId, 'review');
+    if (!userImages.includes(imagePath)) {
+      return res.status(403).json({ 
+        message: "Access denied: This endpoint only allows deletion of review images" 
+      });
+    }
+    
+    // Sanitize path to prevent directory traversal
+    const fileName = path.basename(imagePath);
+    const filePath = path.join(process.cwd(), 'uploads', fileName);
+    
+    // Verify the file path doesn't escape uploads directory  
+    const uploadsDir = path.resolve(process.cwd(), 'uploads');
+    const resolvedPath = path.resolve(filePath);
+    if (!resolvedPath.startsWith(uploadsDir)) {
+      return res.status(400).json({ message: "Invalid file path" });
+    }
+    
+    // Delete the physical file
+    await fs.unlink(filePath);
+    
+    // Remove from tracking system
+    await storage.deleteTrackedImage(userId, imagePath);
+    
+    res.json({ message: "Review image deleted successfully" });
   } catch (error) {
     console.error("Image deletion error:", error);
-    res.status(500).json({ message: "Failed to delete image" });
+    
+    // Don't expose file system errors to client
+    if (error.code === 'ENOENT') {
+      res.status(404).json({ message: "Image not found" });
+    } else {
+      res.status(500).json({ message: "Failed to delete image" });
+    }
   }
 });
 
