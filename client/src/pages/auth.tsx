@@ -13,6 +13,7 @@ import { authAPI } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { User, Store } from "lucide-react";
+import { PasswordChangeDialog } from "@/components/password-change-dialog";
 
 const loginSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -37,6 +38,8 @@ type RegisterForm = z.infer<typeof registerSchema>;
 
 export default function Auth() {
   const [activeTab, setActiveTab] = useState("login");
+  const [showPasswordChangeDialog, setShowPasswordChangeDialog] = useState(false);
+  const [userRequiringPasswordChange, setUserRequiringPasswordChange] = useState<any>(null);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -56,6 +59,19 @@ export default function Auth() {
     mutationFn: authAPI.login,
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/auth/me"] });
+      
+      // Check if password change is required
+      if (data.requiresPasswordChange) {
+        setUserRequiringPasswordChange(data.user);
+        setShowPasswordChangeDialog(true);
+        toast({
+          title: "Password Change Required",
+          description: data.message || "Please set a new secure password to continue.",
+          variant: "default",
+        });
+        return;
+      }
+      
       toast({
         title: "Welcome back!",
         description: "You have been logged in successfully.",
@@ -102,6 +118,21 @@ export default function Auth() {
 
   const onRegister = (data: RegisterForm) => {
     registerMutation.mutate(data);
+  };
+
+  const handlePasswordChangeSuccess = (updatedUser: any) => {
+    setShowPasswordChangeDialog(false);
+    setUserRequiringPasswordChange(null);
+    
+    // Show success message and redirect
+    toast({
+      title: "Password Updated Successfully!",
+      description: "Your password has been changed. Welcome to your dashboard.",
+    });
+    
+    // Redirect based on role
+    const role = updatedUser.role;
+    setLocation(`/dashboard/${role}`);
   };
 
 
@@ -314,6 +345,13 @@ export default function Auth() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        {/* Password Change Dialog */}
+        <PasswordChangeDialog
+          open={showPasswordChangeDialog}
+          user={userRequiringPasswordChange}
+          onSuccess={handlePasswordChangeSuccess}
+        />
       </div>
     </div>
   );

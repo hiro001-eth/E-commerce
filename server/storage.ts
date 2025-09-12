@@ -392,6 +392,77 @@ export class MemStorage implements IStorage {
     this.initializeData().catch(console.error);
   }
 
+  private async createSecureAdminUser() {
+    // Check if admin already exists
+    const adminEmail = process.env.ADMIN_EMAIL || "admin@dokan.com";
+    const existingAdmin = await this.getUserByEmail(adminEmail);
+    
+    if (existingAdmin) {
+      // Admin already exists, skip creation
+      console.log("Admin user already exists");
+      return;
+    }
+
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    
+    if (!adminPassword) {
+      // Development fallback with secure warnings
+      console.warn("\n⚠️  SECURITY WARNING: No ADMIN_PASSWORD environment variable set!");
+      console.warn("⚠️  Using default development password. This is INSECURE for production!");
+      console.warn("⚠️  Set ADMIN_PASSWORD environment variable before deploying.");
+      console.warn("⚠️  Default credentials: admin@dokan.com / admin123\n");
+      
+      // Create admin with temporary password that must be changed
+      const adminId = randomUUID();
+      const hashedPassword = await PasswordCrypto.hashPassword("admin123");
+      const admin: User = {
+        id: adminId,
+        username: "admin",
+        email: adminEmail,
+        password: hashedPassword,
+        role: "admin",
+        firstName: "Admin",
+        lastName: "User",
+        phone: null,
+        address: null,
+        isActive: true,
+        mustChangePassword: true, // Force password change
+        createdAt: new Date(),
+      };
+      this.users.set(adminId, admin);
+      return;
+    }
+
+    // Validate secure password requirements
+    if (adminPassword.length < 12) {
+      throw new Error("ADMIN_PASSWORD must be at least 12 characters long for security");
+    }
+
+    if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])/.test(adminPassword)) {
+      throw new Error("ADMIN_PASSWORD must contain at least one uppercase letter, lowercase letter, number, and special character");
+    }
+
+    // Create secure admin user
+    const adminId = randomUUID();
+    const hashedPassword = await PasswordCrypto.hashPassword(adminPassword);
+    const admin: User = {
+      id: adminId,
+      username: "admin",
+      email: adminEmail,
+      password: hashedPassword,
+      role: "admin",
+      firstName: "Admin",
+      lastName: "User", 
+      phone: null,
+      address: null,
+      isActive: true,
+      mustChangePassword: false, // Secure password provided
+      createdAt: new Date(),
+    };
+    this.users.set(adminId, admin);
+    console.log("✅ Secure admin user created successfully with environment credentials");
+  }
+
   // Add missing methods for stats and recent reviews
   async getStats(): Promise<{
     totalUsers: number;
@@ -441,23 +512,8 @@ export class MemStorage implements IStorage {
   }
 
   private async initializeData() {
-    // Create default admin user with hashed password
-    const adminId = randomUUID();
-    const hashedPassword = await PasswordCrypto.hashPassword("admin123");
-    const admin: User = {
-      id: adminId,
-      username: "admin",
-      email: "admin@dokan.com",
-      password: hashedPassword,
-      role: "admin",
-      firstName: "Admin",
-      lastName: "User",
-      phone: null,
-      address: null,
-      isActive: true,
-      createdAt: new Date(),
-    };
-    this.users.set(adminId, admin);
+    // Create secure admin user with environment-based credentials
+    await this.createSecureAdminUser();
 
     // Create default categories
     const categories = [
@@ -498,6 +554,7 @@ export class MemStorage implements IStorage {
       id,
       role: insertUser.role || "user",
       isActive: insertUser.isActive !== undefined ? insertUser.isActive : true,
+      mustChangePassword: insertUser.mustChangePassword || false,
       address: insertUser.address as { street?: string; city?: string; state?: string; zipCode?: string; country?: string; } | null ?? null,
       phone: insertUser.phone || null,
       createdAt: new Date(),

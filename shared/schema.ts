@@ -20,6 +20,7 @@ export const users = pgTable("users", {
     country?: string;
   }>(),
   isActive: boolean("is_active").notNull().default(true),
+  mustChangePassword: boolean("must_change_password").notNull().default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -315,6 +316,18 @@ export const changePasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+// Force password change schema (no current password required)
+export const forceChangePasswordSchema = z.object({
+  newPassword: z.string().min(8, "New password must be at least 8 characters").regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+    "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character"
+  ),
+  confirmPassword: z.string().min(1, "Please confirm your password"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
+
 // Email change schema
 export const changeEmailSchema = z.object({
   newEmail: z.string().email("Invalid email address"),
@@ -344,6 +357,7 @@ export interface UserDTO {
     country?: string;
   } | null;
   isActive: boolean;
+  mustChangePassword: boolean;
   createdAt: string;
 }
 

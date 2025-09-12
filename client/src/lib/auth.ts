@@ -21,6 +21,16 @@ export const authAPI = {
     return response.json();
   },
 
+  forceChangePassword: async (data: { newPassword: string; confirmPassword: string }) => {
+    const response = await apiRequest("POST", "/api/auth/force-change-password", data);
+    return response.json();
+  },
+
+  changePassword: async (data: { currentPassword: string; newPassword: string; confirmPassword: string }) => {
+    const response = await apiRequest("POST", "/api/auth/change-password", data);
+    return response.json();
+  },
+
 
   register: async (data: RegisterData) => {
     const response = await apiRequest("POST", "/api/auth/register", data);

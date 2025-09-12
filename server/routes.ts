@@ -19,6 +19,8 @@ import {
   insertOrderItemSchema,
   insertReviewSchema,
   insertWishlistSchema,
+  forceChangePasswordSchema,
+  changePasswordSchema,
   type User, 
   type Product,
   type Review,
@@ -163,7 +165,12 @@ router.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    const { name, email, password, role = 'customer' } = result.data;
+    const { name, email, password, role } = result.data;
+
+    // Security: Only allow customer and vendor registration publicly
+    // Admin accounts must be created through separate admin process
+    const allowedRoles = ['customer', 'vendor'];
+    const userRole = role && allowedRoles.includes(role) ? role : 'customer';
 
     const existingUser = await storage.getUserByEmail(email);
     if (existingUser) {
@@ -175,7 +182,7 @@ router.post("/api/auth/register", async (req, res) => {
       name,
       email,
       password: hashedPassword,
-      role: role as 'customer' | 'vendor' | 'admin'
+      role: userRole as 'customer' | 'vendor'
     });
 
     req.login(newUser, (err) => {
@@ -207,6 +214,16 @@ router.post("/api/auth/login", (req, res, next) => {
       }
       const userResponse = { ...user };
       delete (userResponse as any).password;
+      
+      // Check if password change is required
+      if (user.mustChangePassword) {
+        return res.status(200).json({ 
+          user: userResponse, 
+          requiresPasswordChange: true,
+          message: "Password change required. Please set a new secure password."
+        });
+      }
+      
       res.json({ user: userResponse });
     });
   })(req, res, next);
@@ -228,6 +245,89 @@ router.get("/api/auth/me", (req, res) => {
     res.json({ user: userResponse });
   } else {
     res.status(401).json({ message: "Not authenticated" });
+  }
+});
+
+// Force password change route (for users who must change password)
+router.post("/api/auth/force-change-password", requireAuth, async (req, res) => {
+  try {
+    const result = forceChangePasswordSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const { newPassword } = result.data;
+    const user = req.user as User;
+    
+    // Check if user is required to change password
+    if (!user.mustChangePassword) {
+      return res.status(400).json({ message: "Password change not required" });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    
+    // Update user password and remove the mustChangePassword flag
+    const updatedUser = await storage.updateUser(user.id, {
+      password: hashedPassword,
+      mustChangePassword: false
+    });
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Return updated user without password
+    const { password, ...userResponse } = updatedUser;
+    res.json({ 
+      user: userResponse,
+      message: "Password changed successfully. You can now access all features."
+    });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Failed to change password" });
+  }
+});
+
+// Regular password change route
+router.post("/api/auth/change-password", requireAuth, async (req, res) => {
+  try {
+    const result = changePasswordSchema.safeParse(req.body);
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const { currentPassword, newPassword } = result.data;
+    const user = req.user as User;
+    
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Hash the new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    
+    // Update user password
+    const updatedUser = await storage.updateUser(user.id, {
+      password: hashedPassword
+    });
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Error changing password:", error);
+    res.status(500).json({ message: "Failed to change password" });
   }
 });
 
@@ -519,6 +619,45 @@ router.patch("/api/admin/vendors/:id/reject", requireAdmin, async (req, res) => 
   } catch (error) {
     console.error("Error rejecting vendor:", error);
     res.status(500).json({ message: "Failed to reject vendor" });
+  }
+});
+
+// Admin creation endpoint - only accessible by existing admins
+router.post("/api/admin/create-admin", requireAdmin, async (req, res) => {
+  try {
+    const result = insertUserSchema.safeParse({...req.body, role: 'admin'});
+    if (!result.success) {
+      return res.status(400).json({
+        message: "Validation failed",
+        errors: fromZodError(result.error).details
+      });
+    }
+
+    const { name, email, password } = result.data;
+
+    const existingUser = await storage.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const newAdmin = await storage.createUser({
+      name,
+      email,
+      password: hashedPassword,
+      role: 'admin'
+    });
+
+    const adminResponse = { ...newAdmin };
+    delete (adminResponse as any).password;
+    
+    res.status(201).json({ 
+      message: "Admin account created successfully",
+      admin: adminResponse 
+    });
+  } catch (error) {
+    console.error("Error creating admin:", error);
+    res.status(500).json({ message: "Failed to create admin account" });
   }
 });
 
