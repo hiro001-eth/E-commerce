@@ -55,7 +55,7 @@ const DOKAN_KNOWLEDGE = {
   faqs: [
     {
       question: "How do I create an account?",
-      answer: "Click 'Sign Up' in the navigation, fill in your details, and choose between customer or vendor account. You'll receive a confirmation email.",
+      answer: "Click 'Sign Up' in the navigation, fill in your details, and choose between user or vendor account. You'll receive a confirmation email.",
       links: [{ text: "Sign Up", url: "/auth", description: "Create your account" }]
     },
     {
@@ -68,7 +68,7 @@ const DOKAN_KNOWLEDGE = {
     },
     {
       question: "How do I become a vendor?",
-      answer: "First create a customer account, then apply for vendor status in your dashboard. Provide business information and get approved within 3-5 days.",
+      answer: "First create a user account, then apply for vendor status in your dashboard. Provide business information and get approved within 3-5 days.",
       links: [
         { text: "Vendor Guide", url: "/vendor-guide", description: "Complete vendor application guide" },
         { text: "Create Account", url: "/auth", description: "Start by creating an account" }
@@ -181,8 +181,8 @@ export async function getChatResponse(request: ChatRequest): Promise<ChatRespons
     const systemPrompt = `You are a helpful AI assistant for Dokan, a multi-vendor e-commerce marketplace platform. 
 
 DOKAN PLATFORM OVERVIEW:
-- Multi-vendor marketplace where vendors can sell products and customers can buy
-- Users can create customer or vendor accounts
+- Multi-vendor marketplace where vendors can sell products and users can buy
+- Users can create user or vendor accounts
 - Vendors need approval (3-5 days) before selling
 - Features: file uploads, order tracking, reviews, secure payments
 - Running on localhost for development

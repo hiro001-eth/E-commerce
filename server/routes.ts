@@ -42,7 +42,7 @@ const sessionStore = new MemoryStore({
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2025-08-27.basil",
+    apiVersion: "2023-10-16",
   });
 }
 
@@ -167,10 +167,10 @@ router.post("/api/auth/register", async (req, res) => {
 
     const { firstName, lastName, email, password, role } = result.data;
 
-    // Security: Only allow customer and vendor registration publicly
+    // Security: Only allow user and vendor registration publicly
     // Admin accounts must be created through separate admin process
-    const allowedRoles = ['customer', 'vendor'];
-    const userRole = role && allowedRoles.includes(role) ? role : 'customer';
+    const allowedRoles = ['user', 'vendor'];
+    const userRole = role && allowedRoles.includes(role) ? role : 'user';
 
     const existingUser = await storage.getUserByEmail(email);
     if (existingUser) {
@@ -184,7 +184,7 @@ router.post("/api/auth/register", async (req, res) => {
       lastName,
       email,
       password: hashedPassword,
-      role: userRole as 'customer' | 'vendor'
+      role: userRole as 'user' | 'vendor'
     });
 
     req.login(newUser, (err) => {
@@ -984,7 +984,7 @@ router.get("/api/orders/:id/items", requireAuth, async (req, res) => {
     const user = req.user as User;
     
     // Check authorization based on user role
-    if (user.role === 'customer') {
+    if (user.role === 'user') {
       // Customers can only see their own orders
       if (order.userId !== user.id) {
         return res.status(403).json({ message: "Access denied" });
