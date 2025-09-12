@@ -57,7 +57,8 @@ export const corsOptions = cors({
     // Allow development origins and production domain
     const allowedOrigins = [
       'http://localhost:3000',
-      'http://localhost:5000'
+      'http://localhost:5000',
+      'https://localhost:5000'
     ];
     
     // Allow requests with no origin (mobile apps, Postman, etc.)
@@ -72,12 +73,28 @@ export const corsOptions = cors({
       return;
     }
     
-    // Secure Replit domain validation
-    const url = new URL(origin);
-    if (url.protocol === 'https:' && (
-        url.hostname.endsWith('.replit.app') || 
-        url.hostname.endsWith('.replit.dev')
-    )) {
+    // Secure Replit domain validation - allow all replit domains
+    try {
+      const url = new URL(origin);
+      if ((url.protocol === 'https:' || url.protocol === 'http:') && (
+          url.hostname.endsWith('.replit.app') || 
+          url.hostname.endsWith('.replit.dev') ||
+          url.hostname.includes('replit.dev') ||
+          process.env.REPLIT_DOMAINS?.split(',').includes(url.hostname)
+      )) {
+        callback(null, true);
+        return;
+      }
+    } catch (e) {
+      // If URL parsing fails, allow for development
+      if (process.env.NODE_ENV === 'development') {
+        callback(null, true);
+        return;
+      }
+    }
+    
+    // In development, be more permissive
+    if (process.env.NODE_ENV === 'development') {
       callback(null, true);
       return;
     }

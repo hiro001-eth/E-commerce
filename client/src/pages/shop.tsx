@@ -222,7 +222,7 @@ export default function Shop() {
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
                     {categories.filter(category => category.id && category.id.trim() !== '').map(category => (
-                      <SelectItem key={category.id} value={category.id}>
+                      <SelectItem key={category.id} value={category.id || 'no-id'}>
                         {category.name}
                       </SelectItem>
                     ))}
