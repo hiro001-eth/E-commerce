@@ -42,7 +42,7 @@ export const vendors = pgTable("vendors", {
   deliveryRadius: integer("delivery_radius").default(10), // Delivery radius in km
   deliveryFee: decimal("delivery_fee", { precision: 8, scale: 2 }).default("0"),
   freeDeliveryThreshold: decimal("free_delivery_threshold", { precision: 8, scale: 2 }).default("50"),
-  isApproved: boolean("is_approved").notNull().default(true),
+  isApproved: boolean("is_approved").notNull().default(false),
   rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
   totalSales: decimal("total_sales", { precision: 12, scale: 2 }).default("0"),
   createdAt: timestamp("created_at").defaultNow(),

@@ -286,7 +286,9 @@ export interface IStorage {
   createVendor(vendor: InsertVendor): Promise<Vendor>;
   updateVendor(id: string, updates: Partial<Vendor>): Promise<Vendor | undefined>;
   getAllVendors(): Promise<Vendor[]>;
+  getPendingVendors(): Promise<Vendor[]>;
   approveVendor(id: string): Promise<boolean>;
+  rejectVendor(id: string): Promise<boolean>;
 
   // Product methods
   getProduct(id: string): Promise<Product | undefined>;
@@ -539,7 +541,7 @@ export class MemStorage implements IStorage {
       deliveryRadius: insertVendor.deliveryRadius ?? 10,
       deliveryFee: insertVendor.deliveryFee ?? "0",
       freeDeliveryThreshold: insertVendor.freeDeliveryThreshold ?? "50",
-      isApproved: insertVendor.isApproved !== undefined ? insertVendor.isApproved : true,
+      isApproved: insertVendor.isApproved !== undefined ? insertVendor.isApproved : false,
       rating: "0",
       totalSales: "0",
       createdAt: new Date(),
@@ -561,11 +563,25 @@ export class MemStorage implements IStorage {
     return Array.from(this.vendors.values());
   }
 
+  async getPendingVendors(): Promise<Vendor[]> {
+    return Array.from(this.vendors.values()).filter(vendor => !vendor.isApproved);
+  }
+
   async approveVendor(id: string): Promise<boolean> {
     const vendor = this.vendors.get(id);
     if (!vendor) return false;
     
     vendor.isApproved = true;
+    this.vendors.set(id, vendor);
+    return true;
+  }
+
+  async rejectVendor(id: string): Promise<boolean> {
+    const vendor = this.vendors.get(id);
+    if (!vendor) return false;
+    
+    // For now, we'll mark as not approved. In a real app, you might want to delete or mark as rejected
+    vendor.isApproved = false;
     this.vendors.set(id, vendor);
     return true;
   }

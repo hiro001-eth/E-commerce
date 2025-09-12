@@ -286,6 +286,17 @@ router.get("/api/products/:id", async (req, res) => {
 
 router.post("/api/products", requireVendor, upload.array('images', 5), async (req, res) => {
   try {
+    // Check if vendor is approved
+    const user = req.user as User;
+    if (user.role === 'vendor') {
+      const vendor = await storage.getVendorByUserId(user.id);
+      if (!vendor || !vendor.isApproved) {
+        return res.status(403).json({ 
+          message: "Vendor account is pending approval. Please wait for admin approval before listing products." 
+        });
+      }
+    }
+
     const productData = {
       ...req.body,
       colors: req.body.colors ? JSON.parse(req.body.colors) : [],
@@ -296,7 +307,7 @@ router.post("/api/products", requireVendor, upload.array('images', 5), async (re
 
     const result = insertProductSchema.safeParse({
       ...productData,
-      vendorId: (req.user as User).id
+      vendorId: vendor.id  // Use vendor.id instead of user.id
     });
 
     if (!result.success) {
@@ -316,12 +327,28 @@ router.post("/api/products", requireVendor, upload.array('images', 5), async (re
 
 router.put("/api/products/:id", requireVendor, upload.array('images', 5), async (req, res) => {
   try {
+    // Check if vendor is approved (if user is vendor)
+    const user = req.user as User;
+    let vendor = null;
+    if (user.role === 'vendor') {
+      vendor = await storage.getVendorByUserId(user.id);
+      if (!vendor || !vendor.isApproved) {
+        return res.status(403).json({ 
+          message: "Vendor account is pending approval. Please wait for admin approval before managing products." 
+        });
+      }
+    }
+
     const existingProduct = await storage.getProductById(req.params.id);
     if (!existingProduct) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    if (existingProduct.vendorId !== (req.user as User).id && (req.user as User).role !== 'admin') {
+    // Check authorization using vendor.id for vendors, user.id for admins
+    const isAuthorized = user.role === 'admin' || 
+      (vendor && existingProduct.vendorId === vendor.id);
+    
+    if (!isAuthorized) {
       return res.status(403).json({ message: "Not authorized to edit this product" });
     }
 
@@ -354,12 +381,28 @@ router.put("/api/products/:id", requireVendor, upload.array('images', 5), async 
 
 router.delete("/api/products/:id", requireVendor, async (req, res) => {
   try {
+    // Check if vendor is approved (if user is vendor)
+    const user = req.user as User;
+    let vendor = null;
+    if (user.role === 'vendor') {
+      vendor = await storage.getVendorByUserId(user.id);
+      if (!vendor || !vendor.isApproved) {
+        return res.status(403).json({ 
+          message: "Vendor account is pending approval. Please wait for admin approval before managing products." 
+        });
+      }
+    }
+
     const existingProduct = await storage.getProductById(req.params.id);
     if (!existingProduct) {
       return res.status(404).json({ message: "Product not found" });
     }
 
-    if (existingProduct.vendorId !== (req.user as User).id && (req.user as User).role !== 'admin') {
+    // Check authorization using vendor.id for vendors, user.id for admins  
+    const isAuthorized = user.role === 'admin' || 
+      (vendor && existingProduct.vendorId === vendor.id);
+    
+    if (!isAuthorized) {
       return res.status(403).json({ message: "Not authorized to delete this product" });
     }
 
@@ -397,6 +440,43 @@ router.post("/api/categories", requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Error creating category:", error);
     res.status(500).json({ message: "Failed to create category" });
+  }
+});
+
+// Admin vendor approval routes
+router.get("/api/admin/vendors/pending", requireAdmin, async (req, res) => {
+  try {
+    const pendingVendors = await storage.getPendingVendors();
+    res.json(pendingVendors);
+  } catch (error) {
+    console.error("Error fetching pending vendors:", error);
+    res.status(500).json({ message: "Failed to fetch pending vendors" });
+  }
+});
+
+router.patch("/api/admin/vendors/:id/approve", requireAdmin, async (req, res) => {
+  try {
+    const success = await storage.approveVendor(req.params.id);
+    if (!success) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+    res.json({ message: "Vendor approved successfully" });
+  } catch (error) {
+    console.error("Error approving vendor:", error);
+    res.status(500).json({ message: "Failed to approve vendor" });
+  }
+});
+
+router.patch("/api/admin/vendors/:id/reject", requireAdmin, async (req, res) => {
+  try {
+    const success = await storage.rejectVendor(req.params.id);
+    if (!success) {
+      return res.status(404).json({ message: "Vendor not found" });
+    }
+    res.json({ message: "Vendor rejected successfully" });
+  } catch (error) {
+    console.error("Error rejecting vendor:", error);
+    res.status(500).json({ message: "Failed to reject vendor" });
   }
 });
 
