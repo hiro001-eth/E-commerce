@@ -1,0 +1,144 @@
+{
+  "role": "You are a team of cooperative AI development agents (FrontendAgent, BackendAgent, DevOpsAgent, SecurityAgent, QAAgent, UIUXAgent, DocsAgent). Work in parallel, communicate by editing the same repo. Produce production-ready code, tests, CI, docs, and deploy config. Use best practices, secure defaults, and keep every change atomic and documented.",
+  "objective": "Build Dokan — a full-featured e-commerce web app with separate User and Vendor accounts, secure backend, admin approval for vendors, COD checkout, wishlist/orders/settings, product management, and a clean, simple white + sky-blue UI with smooth animations and a loading logo.",
+  "scenario": "Manjil (owner) will test the app. Nothing works until users or vendors are authenticated. Auth must support two signup/login types (user or vendor). Vendors register but cannot list products until approved by an Admin.",
+  "expected_solution": {
+    "frontend": {
+      "stack": ["React", "Tailwind CSS", "Framer Motion", "Node.js", "Vite or CRA"],
+      "features": [
+        "Auth UI with toggle for User/Vendor",
+        "User dashboard with editable profile, orders, wishlist, settings",
+        "Vendor dashboard (pending until approved, then product management UI)",
+        "Shop page with search, filter, categories, wishlist and reviews",
+        "Smooth animations and Dokan loading logo",
+        "White + sky-blue theme with hover effects",
+        "Fix all Select components to avoid empty string runtime error"
+      ]
+    },
+    "backend": {
+      "stack": ["Python", "Flask", "Flask-RESTful", "SQLAlchemy", "Alembic"],
+      "features": [
+        "JWT authentication with refresh + access tokens",
+        "Password hashing with bcrypt or argon2",
+        "RBAC for admin/user/vendor",
+        "CRUD APIs for users, products, orders, wishlists, reviews",
+        "Admin approval flow for vendors",
+        "Field-level encryption (AES-GCM) for sensitive PII",
+        "HTTPS enforced in production"
+      ],
+      "endpoints": [
+        "POST /api/auth/register",
+        "POST /api/auth/login",
+        "POST /api/auth/logout",
+        "GET /api/users/me",
+        "PATCH /api/users/me",
+        "GET /api/products",
+        "POST /api/products",
+        "PATCH /api/products/:id",
+        "DELETE /api/products/:id",
+        "POST /api/orders",
+        "GET /api/orders",
+        "POST /api/vendors/:id/approve",
+        "POST /api/wishlist",
+        "POST /api/reviews"
+      ]
+    },
+    "database": {
+      "dev": "SQLite",
+      "prod": ["PostgreSQL", "MariaDB/MySQL"],
+      "requirements": [
+        "Migration-ready schema",
+        "Secure storage",
+        "Integer currency storage (paisa)",
+        "Seed data for testing"
+      ]
+    },
+    "security": {
+      "rules": [
+        "No secrets in repo, use .env files",
+        "Passwords hashed with bcrypt/argon2",
+        "AES-256-GCM for encrypted fields",
+        "HTTPS + HSTS in production",
+        "Admin login hidden from public links"
+      ]
+    },
+    "docs": {
+      "deliverables": [
+        "README with setup/deploy instructions",
+        ".env.example",
+        "API docs (OpenAPI spec)",
+        "Admin/User manual",
+        "FAQ, Policy, Privacy & Cookie Policy pages",
+        "Community Forum placeholder"
+      ]
+    },
+    "qa": {
+      "tests": [
+        "Signup/login for user",
+        "Signup vendor, admin approval, vendor creates product",
+        "User wishlist + COD order",
+        "User profile edit persists to DB",
+        "Orders, Wishlist, Settings pages fully functional",
+        "Shop page interaction with no runtime errors",
+        "No exposed admin links"
+      ]
+    },
+    "devops": {
+      "deliverables": [
+        "Dockerfile + docker-compose (frontend, backend, db, optional minio)",
+        "GitHub Actions for lint, test, build",
+        "Dependabot or safety scan",
+        "Pre-commit hooks for linting & secrets check"
+      ]
+    }
+  },
+  "constraints": {
+    "images": "Local storage in dev, S3-compatible in production",
+    "payment": "Cash on Delivery only (order workflow modular for future)",
+    "currency": "Nepali Rupees (NPR) in UI, paisa stored in DB",
+    "testing": ["pytest", "jest", "react-testing-library", "Playwright or Cypress"],
+    "ci_cd": "GitHub Actions"
+  },
+  "implementation_steps": {
+    "frontend_agent": "Build UI components, auth pages, dashboards, shop, fix Select values, add animations",
+    "backend_agent": "Implement REST API, RBAC, migrations, seed data, CRUD endpoints",
+    "devops_agent": "Dockerize app, setup CI/CD, deployment configs",
+    "security_agent": "Add crypto, enforce HTTPS, remove secrets, setup key rotation",
+    "qa_agent": "Write unit + integration tests, create e2e scenarios",
+    "uiux_agent": "Design white + sky-blue theme, add loading animations, ensure responsiveness and accessibility",
+    "docs_agent": "Write README, setup guide, OpenAPI spec, manuals, FAQ"
+  },
+  "acceptance_criteria": [
+    "Shop page renders without Select errors",
+    "User can register/login/edit profile (DB updated)",
+    "Orders, Wishlist, Settings pages fully working",
+    "Vendor flow works with admin approval",
+    "No admin credentials or links in public UI",
+    "Secrets stored in .env, not repo",
+    "Passwords hashed and PII encrypted",
+    "Tests pass in CI/CD pipeline",
+    "Currency shown in NPR",
+    "Docs and demo environment included"
+  ],
+  "test_cases": [
+    "User signup/login/edit profile flow",
+    "Vendor signup/approval/product creation",
+    "Wishlist + COD order flow",
+    "Shop select dropdown bug fixed",
+    "Admin route protected"
+  ],
+  "quality_rules": [
+    "Semantic versioning",
+    "Meaningful commits",
+    "Unit/integration/e2e tests mandatory",
+    "Accessible UI (a11y basics)"
+  ],
+  "delivery_format": {
+    "repo": "Single GitHub repo or zip",
+    "branch": "feature/dokan-complete",
+    "docs": ["README", "API docs", "Setup guide", "CHANGELOG.md"],
+    "deployment": "docker-compose up --build with seeded demo data",
+    "screenshots": "Shop, User dashboard, Vendor dashboard, Admin approval, CI status"
+  },
+  "priority_bug_fix": "Fix Select.Item runtime error by ensuring no empty string values are used. Use `value='none'` or `disabled` placeholder instead."
+}

@@ -221,7 +221,7 @@ export default function Shop() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Categories</SelectItem>
-                    {categories.map(category => (
+                    {categories.filter(category => category.id && category.id.trim() !== '').map(category => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
                       </SelectItem>
@@ -357,7 +357,7 @@ export default function Shop() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {SORT_OPTIONS.map(option => (
+                    {SORT_OPTIONS.filter(option => option.value && option.value.trim() !== '').map(option => (
                       <SelectItem key={option.value} value={option.value}>
                         {option.label}
                       </SelectItem>
@@ -500,7 +500,7 @@ export default function Shop() {
       </div>
 
       {/* Enhanced CSS for smooth animations */}
-      <style jsx>{`
+      <style>{`
         @keyframes fadeInUp {
           from {
             opacity: 0;
