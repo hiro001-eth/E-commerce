@@ -290,7 +290,7 @@ export default function CheckoutForm({ cartItems, onBack, onSuccess }: CheckoutF
                   Payment Method
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
                 <Select
                   value={form.watch("paymentMethod")}
                   onValueChange={(value) => form.setValue("paymentMethod", value)}
@@ -299,11 +299,22 @@ export default function CheckoutForm({ cartItems, onBack, onSuccess }: CheckoutF
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="cod">Cash on Delivery</SelectItem>
-                    <SelectItem value="card">Credit/Debit Card</SelectItem>
-                    <SelectItem value="paypal">PayPal</SelectItem>
+                    <SelectItem value="cod">Cash on Delivery (COD)</SelectItem>
+                    <SelectItem value="card" disabled>Credit/Debit Card (Coming Soon)</SelectItem>
+                    <SelectItem value="paypal" disabled>PayPal (Coming Soon)</SelectItem>
                   </SelectContent>
                 </Select>
+                {form.watch("paymentMethod") === "cod" && (
+                  <div className="bg-accent/20 border border-accent/30 rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-4 h-4 text-accent-foreground" />
+                      <span className="text-sm font-medium text-accent-foreground">Cash on Delivery</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Pay with cash when your order is delivered to your doorstep. No advance payment required.
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
