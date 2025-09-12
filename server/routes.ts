@@ -230,6 +230,41 @@ router.get("/api/auth/me", (req, res) => {
   }
 });
 
+// Profile update route
+router.put("/api/profile", requireAuth, async (req, res) => {
+  try {
+    const { firstName, lastName, phone } = req.body;
+    
+    // Validate required fields
+    if (!firstName || !lastName) {
+      return res.status(400).json({ 
+        message: "First name and last name are required" 
+      });
+    }
+    
+    // Prepare update data
+    const updateData = {
+      firstName: firstName.trim(),
+      lastName: lastName.trim(),
+      phone: phone ? phone.trim() : null,
+    };
+    
+    const userId = (req.user as User).id;
+    const updatedUser = await storage.updateUser(userId, updateData);
+    
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    // Return updated user without password
+    const { password, ...userResponse } = updatedUser;
+    res.json(userResponse);
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    res.status(500).json({ message: "Failed to update profile" });
+  }
+});
+
 // Product routes
 router.get("/api/products", async (req, res) => {
   try {
