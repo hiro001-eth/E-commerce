@@ -1,4 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatCurrency } from "@/lib/currency";
 import { Truck, MapPin, Clock, DollarSign, Globe, Phone } from "lucide-react";
 
 export default function Shipping() {
@@ -60,15 +61,15 @@ export default function Shipping() {
                 <div className="border rounded-lg p-4">
                   <h4 className="font-medium mb-2">Standard Shipping</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• Free on orders over $50</li>
-                    <li>• $4.99 for orders under $50</li>
+                    <li>• Free on orders over {formatCurrency(5000)}</li>
+                    <li>• {formatCurrency(500)} for orders under {formatCurrency(5000)}</li>
                     <li>• 5-7 business days delivery</li>
                   </ul>
                 </div>
                 <div className="border rounded-lg p-4">
                   <h4 className="font-medium mb-2">Express Shipping</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• $9.99 for all orders</li>
+                    <li>• {formatCurrency(1000)} for all orders</li>
                     <li>• 2-3 business days delivery</li>
                     <li>• Available for most locations</li>
                   </ul>
@@ -76,7 +77,7 @@ export default function Shipping() {
                 <div className="border rounded-lg p-4">
                   <h4 className="font-medium mb-2">Overnight Shipping</h4>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• $19.99 for all orders</li>
+                    <li>• {formatCurrency(2000)} for all orders</li>
                     <li>• Next business day delivery</li>
                     <li>• Limited to major cities</li>
                   </ul>
@@ -134,7 +135,7 @@ export default function Shipping() {
                 <li>Tracking information sent via email once shipped</li>
                 <li>Real-time tracking available in your account</li>
                 <li>SMS notifications for delivery updates (optional)</li>
-                <li>Delivery confirmation required for orders over $100</li>
+                <li>Delivery confirmation required for orders over {formatCurrency(10000)}</li>
                 <li>Safe drop-off available for trusted locations</li>
               </ul>
             </CardContent>
