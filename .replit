@@ -27,10 +27,6 @@ localPort = 40873
 externalPort = 3000
 
 [[ports]]
-localPort = 46003
-externalPort = 4200
-
-[[ports]]
 localPort = 46727
 externalPort = 3001
 
@@ -60,3 +56,4 @@ waitForPort = 5000
 
 [agent]
 integrations = ["javascript_mem_db:1.0.0", "javascript_openai:1.0.0", "javascript_stripe:1.0.0"]
+expertMode = true

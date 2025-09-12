@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import type { ProductDTO as Product } from "@shared/schema";
 import { formatCurrency } from "@/lib/currency";
 import { useLocation } from "wouter";
+import WishlistButton from "@/components/wishlist-button";
 
 interface ProductCardProps {
   product: Product;
@@ -147,15 +148,22 @@ export default function ProductCard({ product }: ProductCardProps) {
           </div>
         )}
         
-        <Button
-          onClick={handleAddToCart}
-          disabled={product.stock === 0 || addToCartMutation.isPending}
-          className="w-full"
-          data-testid={`button-add-to-cart-${product.id}`}
-        >
-          <ShoppingCart className="w-4 h-4 mr-2" />
-          {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            onClick={handleAddToCart}
+            disabled={product.stock === 0 || addToCartMutation.isPending}
+            className="flex-1"
+            data-testid={`button-add-to-cart-${product.id}`}
+          >
+            <ShoppingCart className="w-4 h-4 mr-2" />
+            {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
+          </Button>
+          <WishlistButton 
+            productId={product.id} 
+            size="sm"
+            className="px-3"
+          />
+        </div>
         
         {product.stock > 0 && product.stock <= 10 && (
           <p className="text-xs text-destructive mt-2 text-center" data-testid={`text-stock-warning-${product.id}`}>

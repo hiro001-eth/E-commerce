@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { User, ShoppingBag, Heart, Settings, DollarSign, Star, ChevronDown, ChevronUp } from "lucide-react";
 import { useState, useEffect } from "react";
 import { apiRequest } from "@/lib/queryClient";
+import { formatCurrency } from "@/lib/currency";
 import { useToast } from "@/hooks/use-toast";
 import ReviewForm from "@/components/review-form";
 import ReviewPopup from "@/components/review-popup";
@@ -42,6 +43,11 @@ export default function UserDashboard() {
   });
 
   const user = authData?.user;
+
+  const { data: wishlistItems = [], isLoading: wishlistLoading } = useQuery<any[]>({
+    queryKey: ["/api/wishlist"],
+    enabled: !!user,
+  });
 
   const { data: unreviewedOrders = [] } = useQuery<{ order: Order; products: ProductDTO[] }[]>({
     queryKey: ["/api/orders/unreviewed"],
@@ -213,10 +219,8 @@ export default function UserDashboard() {
                 variant="ghost" 
                 className="w-full justify-start"
                 onClick={() => {
-                  toast({
-                    title: "Wishlist Feature",
-                    description: "Wishlist functionality will be available soon. You can add products to your wishlist from the shop page.",
-                  });
+                  const wishlistTab = document.querySelector('[data-testid="tab-wishlist"]') as HTMLElement;
+                  if (wishlistTab) wishlistTab.click();
                 }}
               >
                 <Heart className="w-4 h-4 mr-2" />
@@ -267,7 +271,7 @@ export default function UserDashboard() {
                     <div>
                       <p className="text-muted-foreground text-sm">Total Spent</p>
                       <p className="text-2xl font-bold text-foreground" data-testid="text-total-spent">
-                        ${stats.totalSpent.toFixed(2)}
+                        {formatCurrency(stats.totalSpent)}
                       </p>
                     </div>
                     <DollarSign className="w-8 h-8 text-chart-2" />
@@ -438,14 +442,79 @@ export default function UserDashboard() {
                     <CardTitle>My Wishlist</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center py-8">
-                      <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">Your wishlist is empty</p>
-                      <p className="text-sm text-muted-foreground mb-4">Add products you love to keep track of them</p>
-                      <Button asChild>
-                        <a href="/shop">Browse Products</a>
-                      </Button>
-                    </div>
+                    {wishlistLoading ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground">Loading wishlist...</p>
+                      </div>
+                    ) : wishlistItems.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {wishlistItems.map((item: any) => (
+                          <Card key={item.id} className="group hover:shadow-lg transition-all duration-300">
+                            <CardContent className="p-4">
+                              <div className="aspect-square bg-muted rounded-lg mb-3 overflow-hidden">
+                                {item.product?.images?.[0] ? (
+                                  <img 
+                                    src={item.product.images[0]} 
+                                    alt={item.product.name}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                                  />
+                                ) : (
+                                  <div className="w-full h-full bg-muted flex items-center justify-center">
+                                    <Heart className="w-8 h-8 text-muted-foreground" />
+                                  </div>
+                                )}
+                              </div>
+                              <h4 className="font-semibold text-foreground mb-1 line-clamp-2">
+                                {item.product?.name || 'Product Name'}
+                              </h4>
+                              <p className="text-primary font-bold mb-2">
+                                {formatCurrency(item.product?.discountPrice || item.product?.price || 0)}
+                              </p>
+                              <div className="flex gap-2">
+                                <Button 
+                                  size="sm" 
+                                  className="flex-1"
+                                  onClick={() => window.location.href = `/product/${item.productId}`}
+                                >
+                                  View Product
+                                </Button>
+                                <Button 
+                                  size="sm" 
+                                  variant="outline"
+                                  onClick={async () => {
+                                    try {
+                                      await apiRequest("DELETE", `/api/wishlist/${item.productId}`);
+                                      queryClient.invalidateQueries({ queryKey: ["/api/wishlist"] });
+                                      toast({
+                                        title: "Removed from wishlist",
+                                        description: "Product removed from your wishlist",
+                                      });
+                                    } catch (error) {
+                                      toast({
+                                        title: "Error",
+                                        description: "Failed to remove from wishlist",
+                                        variant: "destructive",
+                                      });
+                                    }
+                                  }}
+                                >
+                                  <Heart className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <Heart className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                        <p className="text-muted-foreground">Your wishlist is empty</p>
+                        <p className="text-sm text-muted-foreground mb-4">Add products you love to keep track of them</p>
+                        <Button asChild>
+                          <a href="/shop">Browse Products</a>
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </TabsContent>

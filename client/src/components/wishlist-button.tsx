@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import type { WishlistDTO, User } from "@shared/schema";
+import type { WishlistDTO, User as UserType } from "@shared/schema";
 
 interface WishlistButtonProps {
   productId: string;
@@ -21,7 +21,7 @@ export default function WishlistButton({
   const queryClient = useQueryClient();
 
   // Check authentication status
-  const { data: authData } = useQuery<{ user: User }>({
+  const { data: authData } = useQuery<{ user: UserType }>({
     queryKey: ["/api/auth/me"],
     retry: false,
   });
@@ -70,7 +70,8 @@ export default function WishlistButton({
     },
   });
 
-  const handleToggleWishlist = () => {
+  const handleToggleWishlist = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent navigation when clicking wishlist button
     if (!authData?.user) {
       toast({
         title: "Please login",

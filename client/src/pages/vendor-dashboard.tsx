@@ -872,7 +872,7 @@ export default function VendorDashboard() {
 
                     <div className="grid grid-cols-3 gap-4">
                       <div>
-                        <Label htmlFor="price">Price ($)</Label>
+                        <Label htmlFor="price">Price (NPR)</Label>
                         <Input
                           id="price"
                           type="number"
@@ -888,7 +888,7 @@ export default function VendorDashboard() {
                       </div>
 
                       <div>
-                        <Label htmlFor="discountPrice">Discount Price ($)</Label>
+                        <Label htmlFor="discountPrice">Discount Price (NPR)</Label>
                         <Input
                           id="discountPrice"
                           type="number"
