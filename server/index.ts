@@ -1,10 +1,18 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { configureSecurity } from "./security";
+import cookieParser from 'cookie-parser';
 
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Essential middleware first (required for security)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+app.use(cookieParser());
+
+// Configure comprehensive security after essential middleware
+configureSecurity(app);
 
 app.use((req, res, next) => {
   const start = Date.now();
