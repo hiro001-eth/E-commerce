@@ -57,8 +57,8 @@ export default function Navbar({ user, onCartToggle }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link href="/" className="flex items-center" data-testid="link-home">
-            <Store className="text-2xl text-primary mr-3" />
+          <Link href="/" className="flex items-center hover-lift" data-testid="link-home">
+            <Store className="text-2xl text-primary mr-3 smooth-transition hover:scale-110" />
             <span className="text-2xl font-bold text-primary">DOKAN</span>
           </Link>
 

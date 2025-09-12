@@ -71,7 +71,7 @@ export function PasswordChangeDialog({ open, user, onSuccess }: PasswordChangeDi
 
   return (
     <Dialog open={open} modal>
-      <DialogContent className="sm:max-w-md" hideCloseButton>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader className="text-center">
           <div className="flex justify-center mb-4">
             <div className="w-16 h-16 bg-yellow-100 dark:bg-yellow-900/20 rounded-full flex items-center justify-center">
