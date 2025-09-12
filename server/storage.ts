@@ -906,6 +906,7 @@ export class MemStorage implements IStorage {
       ...insertReview,
       id,
       comment: insertReview.comment || null,
+      images: insertReview.images || null,
       createdAt: new Date(),
     };
     this.reviews.set(id, review);

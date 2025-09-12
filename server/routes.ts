@@ -42,7 +42,7 @@ const sessionStore = new MemoryStore({
 let stripe: Stripe | null = null;
 if (process.env.STRIPE_SECRET_KEY) {
   stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
-    apiVersion: "2023-10-16",
+    apiVersion: "2025-08-27.basil",
   });
 }
 
@@ -165,7 +165,7 @@ router.post("/api/auth/register", async (req, res) => {
       });
     }
 
-    const { name, email, password, role } = result.data;
+    const { firstName, lastName, email, password, role } = result.data;
 
     // Security: Only allow customer and vendor registration publicly
     // Admin accounts must be created through separate admin process
@@ -179,7 +179,9 @@ router.post("/api/auth/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const newUser = await storage.createUser({
-      name,
+      username: email, // Use email as username
+      firstName,
+      lastName,
       email,
       password: hashedPassword,
       role: userRole as 'customer' | 'vendor'
@@ -438,6 +440,11 @@ router.post("/api/products", requireVendor, upload.array('images', 5), async (re
       colors: req.body.colors ? JSON.parse(req.body.colors) : [],
       sizes: req.body.sizes ? JSON.parse(req.body.sizes) : [],
       tags: req.body.tags ? JSON.parse(req.body.tags) : [],
+      dimensions: req.body.dimensions ? (typeof req.body.dimensions === 'string' ? JSON.parse(req.body.dimensions) : {
+        length: req.body.dimensions.length ? Number(req.body.dimensions.length) : undefined,
+        width: req.body.dimensions.width ? Number(req.body.dimensions.width) : undefined,
+        height: req.body.dimensions.height ? Number(req.body.dimensions.height) : undefined,
+      }) : undefined,
       images: (req.files as Express.Multer.File[])?.map(file => `/uploads/${file.filename}`) || []
     };
 
@@ -494,18 +501,39 @@ router.put("/api/products/:id", requireVendor, upload.array('images', 5), async 
       return res.status(403).json({ message: "Not authorized to edit this product" });
     }
 
+    // Helper function to safely convert dimensions
+    const convertDimensions = (dims: any): { length?: number; width?: number; height?: number } | null => {
+      if (!dims) return null;
+      const result: { length?: number; width?: number; height?: number } = {};
+      if (dims.length !== undefined && dims.length !== null && !isNaN(Number(dims.length))) {
+        result.length = Number(dims.length);
+      }
+      if (dims.width !== undefined && dims.width !== null && !isNaN(Number(dims.width))) {
+        result.width = Number(dims.width);
+      }
+      if (dims.height !== undefined && dims.height !== null && !isNaN(Number(dims.height))) {
+        result.height = Number(dims.height);
+      }
+      return Object.keys(result).length > 0 ? result : null;
+    };
+
+    // Destructure to exclude dimensions from spread
+    const { dimensions, colors, sizes, tags, ...bodyWithoutDimensions } = req.body;
+    
     const productData = {
-      ...req.body,
-      colors: req.body.colors ? JSON.parse(req.body.colors) : existingProduct.colors,
-      sizes: req.body.sizes ? JSON.parse(req.body.sizes) : existingProduct.sizes,
-      tags: req.body.tags ? JSON.parse(req.body.tags) : existingProduct.tags,
+      ...bodyWithoutDimensions,
+      colors: colors ? JSON.parse(colors) : existingProduct.colors,
+      sizes: sizes ? JSON.parse(sizes) : existingProduct.sizes,
+      tags: tags ? JSON.parse(tags) : existingProduct.tags,
+      dimensions: convertDimensions(dimensions) || existingProduct.dimensions,
     };
 
     if (req.files && (req.files as Express.Multer.File[]).length > 0) {
       productData.images = (req.files as Express.Multer.File[]).map(file => `/uploads/${file.filename}`);
     }
 
-    const result = insertProductSchema.partial().safeParse(productData);
+    // Type suppress the dimensions issue for form data parsing
+    const result = insertProductSchema.partial().safeParse(productData as any);
     if (!result.success) {
       return res.status(400).json({
         message: "Validation failed",
@@ -513,7 +541,7 @@ router.put("/api/products/:id", requireVendor, upload.array('images', 5), async 
       });
     }
 
-    const updatedProduct = await storage.updateProduct(req.params.id, result.data);
+    const updatedProduct = await storage.updateProduct(req.params.id, result.data as any);
     res.json(updatedProduct);
   } catch (error) {
     console.error("Error updating product:", error);
@@ -577,7 +605,7 @@ router.post("/api/categories", requireAdmin, async (req, res) => {
       });
     }
 
-    const newCategory = await storage.createCategory(result.data.name, result.data.description);
+    const newCategory = await storage.createCategory(result.data.name, result.data.description || undefined);
     res.status(201).json(newCategory);
   } catch (error) {
     console.error("Error creating category:", error);
@@ -633,7 +661,7 @@ router.post("/api/admin/create-admin", requireAdmin, async (req, res) => {
       });
     }
 
-    const { name, email, password } = result.data;
+    const { firstName, lastName, email, password } = result.data;
 
     const existingUser = await storage.getUserByEmail(email);
     if (existingUser) {
@@ -642,7 +670,9 @@ router.post("/api/admin/create-admin", requireAdmin, async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const newAdmin = await storage.createUser({
-      name,
+      username: email, // Use email as username
+      firstName,
+      lastName,
       email,
       password: hashedPassword,
       role: 'admin'
@@ -759,7 +789,12 @@ router.post("/api/wishlist", requireAuth, async (req, res) => {
 
 router.delete("/api/wishlist/:productId", requireAuth, async (req, res) => {
   try {
-    await storage.removeFromWishlist((req.user as User).id, req.params.productId);
+    // Find the wishlist item first
+    const wishlistItems = await storage.getWishlistByUser((req.user as User).id);
+    const wishlistItem = wishlistItems.find(item => item.productId === req.params.productId);
+    if (wishlistItem) {
+      await storage.removeFromWishlist(wishlistItem.id);
+    }
     res.json({ message: "Item removed from wishlist" });
   } catch (error) {
     console.error("Error removing from wishlist:", error);
@@ -883,7 +918,7 @@ router.post("/api/orders", requireAuth, async (req, res) => {
     // Create separate orders for each vendor
     const createdOrders: Order[] = [];
     
-    for (const [vendorId, group] of vendorGroups) {
+    for (const [vendorId, group] of Array.from(vendorGroups.entries())) {
       // Validate order data with schema
       const orderData = {
         userId: (req.user as User).id,
@@ -1288,7 +1323,7 @@ router.delete("/api/upload/review-image", requireAuth, async (req, res) => {
     console.error("Image deletion error:", error);
     
     // Don't expose file system errors to client
-    if (error.code === 'ENOENT') {
+    if ((error as any).code === 'ENOENT') {
       res.status(404).json({ message: "Image not found" });
     } else {
       res.status(500).json({ message: "Failed to delete image" });
